@@ -1,12 +1,14 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { SessionProvider } from "@/components/providers/SessionProvider"
+import "@/lib/server-config"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "ValiNow - Validate Your Startup Ideas",
-  description: "AI-powered startup idea validation platform for pre-MVP entrepreneurs",
+  title: "ValiNow - Validate Your Business Ideas",
+  description: "Get comprehensive analysis and validation for your business ideas",
 }
 
 export default function RootLayout({
@@ -16,7 +18,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body className={inter.className}>
+        <SessionProvider>
+          <div className="min-h-screen bg-background">
+            {children}
+          </div>
+        </SessionProvider>
+      </body>
     </html>
   )
 }

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -14,49 +14,113 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const industries = {
-  "SaaS": ["CRM", "Project Management", "Marketing Automation", "HR / Payroll"],
-  "Healthcare": ["Digital Health", "Telemedicine", "Elderly Care", "Medical Devices"],
-  "Fintech": ["Personal Finance", "Payments", "Crypto / Web3", "Lending / Credit"],
-  "EdTech": ["K-12", "Higher Education", "Microlearning", "Test Prep"],
-  "E-commerce": ["Marketplaces", "DTC Brands", "Subscription Boxes", "Resale Platforms"],
-  "Sustainability": ["Climate Tech", "Carbon Tracking", "Recycling & Waste", "Green Energy"],
-  "Productivity": ["Note-Taking", "Task Management", "Time Tracking", "Collaboration Tools"],
-  "Developer Tools": ["APIs / SDKs", "DevOps / CI", "Testing / QA", "Documentation Tools"],
-  "AI / ML": ["Generative AI", "Computer Vision", "NLP / Chatbots", "Predictive Analytics"],
-  "Other": ["General Tech", "Non-Tech"],
+const industryOptions = [
+  { value: "technology", label: "Technology" },
+  { value: "healthcare", label: "Healthcare" },
+  { value: "finance", label: "Finance" },
+  { value: "education", label: "Education" },
+  { value: "retail", label: "Retail" },
+  { value: "manufacturing", label: "Manufacturing" },
+  { value: "services", label: "Services" },
+  { value: "other", label: "Other" }
+];
+
+const subIndustryOptions = {
+  technology: [
+    { value: "software", label: "Software" },
+    { value: "hardware", label: "Hardware" },
+    { value: "ai-ml", label: "AI/ML" },
+    { value: "cloud", label: "Cloud Computing" },
+    { value: "cybersecurity", label: "Cybersecurity" },
+    { value: "mobile", label: "Mobile Apps" },
+    { value: "web", label: "Web Development" },
+    { value: "iot", label: "Internet of Things" }
+  ],
+  healthcare: [
+    { value: "telehealth", label: "Telehealth" },
+    { value: "medical-devices", label: "Medical Devices" },
+    { value: "health-insurance", label: "Health Insurance" },
+    { value: "pharmaceuticals", label: "Pharmaceuticals" },
+    { value: "wellness", label: "Wellness & Fitness" },
+    { value: "mental-health", label: "Mental Health" }
+  ],
+  finance: [
+    { value: "fintech", label: "FinTech" },
+    { value: "banking", label: "Banking" },
+    { value: "insurance", label: "Insurance" },
+    { value: "investment", label: "Investment" },
+    { value: "cryptocurrency", label: "Cryptocurrency" }
+  ],
+  education: [
+    { value: "edtech", label: "EdTech" },
+    { value: "online-learning", label: "Online Learning" },
+    { value: "tutoring", label: "Tutoring" },
+    { value: "corporate-training", label: "Corporate Training" }
+  ],
+  retail: [
+    { value: "ecommerce", label: "E-commerce" },
+    { value: "brick-mortar", label: "Brick & Mortar" },
+    { value: "marketplace", label: "Marketplace" },
+    { value: "subscription", label: "Subscription Box" }
+  ],
+  manufacturing: [
+    { value: "automotive", label: "Automotive" },
+    { value: "electronics", label: "Electronics" },
+    { value: "textiles", label: "Textiles" },
+    { value: "food-beverage", label: "Food & Beverage" }
+  ],
+  services: [
+    { value: "consulting", label: "Consulting" },
+    { value: "professional-services", label: "Professional Services" },
+    { value: "personal-services", label: "Personal Services" },
+    { value: "logistics", label: "Logistics" }
+  ],
+  other: [
+    { value: "other", label: "Other" }
+  ]
 };
 
-const pricingModels = [
-  "Freemium",
-  "Subscription (Monthly/Yearly)",
-  "One-Time Payment",
-  "Transaction Fee",
-  "Pay-As-You-Go",
-  "Licensing",
-  "Ad-Supported",
+const targetCustomerOptions = [
+  { value: "b2b", label: "Business to Business (B2B)" },
+  { value: "b2c", label: "Business to Consumer (B2C)" },
+  { value: "b2b2c", label: "Business to Business to Consumer (B2B2C)" },
+  { value: "d2c", label: "Direct to Consumer (D2C)" }
 ];
 
-const currentStages = [
-  "Just an idea",
-  "Wireframes done",
-  "MVP in progress",
-  "MVP launched",
-  "Live product with users",
+const pricingModelOptions = [
+  { value: "subscription", label: "Subscription" },
+  { value: "one-time", label: "One-time Purchase" },
+  { value: "freemium", label: "Freemium" },
+  { value: "advertising", label: "Advertising-based" },
+  { value: "marketplace", label: "Marketplace Commission" }
 ];
 
-const teamCompositions = [
-  "Solo founder",
-  "2–3 person team",
-  "4–6 person team",
-  "7+ people",
+const currentStageOptions = [
+  { value: "idea", label: "Idea Stage" },
+  { value: "mvp", label: "MVP Development" },
+  { value: "beta", label: "Beta Testing" },
+  { value: "launched", label: "Launched" },
+  { value: "scaling", label: "Scaling" }
+];
+
+const teamCompositionOptions = [
+  { value: "solo-technical", label: "Solo Technical Founder" },
+  { value: "solo-business", label: "Solo Business Founder" },
+  { value: "technical-team", label: "Technical Team (2+ developers)" },
+  { value: "mixed-team-small", label: "Mixed Team (2-3 people)" },
+  { value: "mixed-team-medium", label: "Mixed Team (4-6 people)" },
+  { value: "mixed-team-large", label: "Mixed Team (7+ people)" },
+  { value: "business-team", label: "Business Team" },
+  { value: "research-team", label: "Research/Academic Team" }
 ];
 
 export default function ValidatePage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    productDescription: "",
+    description: "",
     industry: "",
     subIndustry: "",
     targetCustomers: "",
@@ -66,16 +130,45 @@ export default function ValidatePage() {
     additionalInfo: "",
   });
 
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/signin");
+    }
+  }, [status, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
+
+    if (!session?.user?.id) {
+      setError("You must be signed in to submit an analysis");
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      // TODO: Implement API call to submit form data
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulated API call
-      router.push("/analysis");
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          userId: session.user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze idea');
+      }
+
+      const result = await response.json();
+      router.push(`/analysis/${result.analysisId}`);
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error('Error submitting form:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -85,6 +178,10 @@ export default function ValidatePage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -108,170 +205,196 @@ export default function ValidatePage() {
             </p>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="productDescription" className="text-sm font-medium text-gray-900">Product Description</Label>
-                <Textarea
-                  id="productDescription"
-                  name="productDescription"
-                  placeholder="Describe your product idea in detail. What problem does it solve? How does it work? What makes it unique?"
-                  className="min-h-[100px] bg-white border-gray-200 focus:border-gray-400 text-sm"
-                  required
-                  value={formData.productDescription}
-                  onChange={handleChange}
-                />
-              </div>
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="industry" className="text-sm font-medium text-gray-900">Industry</Label>
-                  <Select
-                    value={formData.industry}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, industry: value }))
-                    }
-                  >
-                    <SelectTrigger className="h-12 bg-white border-gray-200 focus:border-gray-400 text-sm">
-                      <SelectValue placeholder="Select industry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(industries).map((industry) => (
-                        <SelectItem key={industry} value={industry}>
-                          {industry}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Product Description
+              </label>
+              <Textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe your product idea in detail..."
+                className="w-full"
+                rows={4}
+                required
+              />
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="subIndustry" className="text-sm font-medium text-gray-900">Sub-industry</Label>
-                  <Select
-                    value={formData.subIndustry}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, subIndustry: value }))
-                    }
-                    disabled={!formData.industry}
-                  >
-                    <SelectTrigger className="h-12 bg-white border-gray-200 focus:border-gray-400 text-sm">
-                      <SelectValue placeholder="Select sub-industry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formData.industry &&
-                        industries[formData.industry as keyof typeof industries].map(
-                          (subIndustry) => (
-                            <SelectItem key={subIndustry} value={subIndustry}>
-                              {subIndustry}
-                            </SelectItem>
-                          )
-                        )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Industry
+              </label>
+              <Select
+                value={formData.industry}
+                onValueChange={(value) => handleSelectChange("industry", value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select an industry" />
+                </SelectTrigger>
+                <SelectContent>
+                  {industryOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!formData.industry && (
+                <p className="mt-1 text-sm text-red-600">Please select an industry</p>
+              )}
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="targetCustomers" className="text-sm font-medium text-gray-900">Target Customers</Label>
-                <Input
-                  id="targetCustomers"
-                  name="targetCustomers"
-                  placeholder="Describe your target customer segments"
-                  className="h-12 bg-white border-gray-200 focus:border-gray-400 text-sm"
-                  required
-                  value={formData.targetCustomers}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pricingModel" className="text-sm font-medium text-gray-900">Pricing Model</Label>
-                  <Select
-                    value={formData.pricingModel}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, pricingModel: value }))
-                    }
-                  >
-                    <SelectTrigger className="h-12 bg-white border-gray-200 focus:border-gray-400 text-sm">
-                      <SelectValue placeholder="Select pricing model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pricingModels.map((model) => (
-                        <SelectItem key={model} value={model}>
-                          {model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="currentStage" className="text-sm font-medium text-gray-900">Current Stage</Label>
-                  <Select
-                    value={formData.currentStage}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({ ...prev, currentStage: value }))
-                    }
-                  >
-                    <SelectTrigger className="h-12 bg-white border-gray-200 focus:border-gray-400 text-sm">
-                      <SelectValue placeholder="Select current stage" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {currentStages.map((stage) => (
-                        <SelectItem key={stage} value={stage}>
-                          {stage}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="teamComposition" className="text-sm font-medium text-gray-900">Team Composition</Label>
+            {formData.industry && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sub-industry
+                </label>
                 <Select
-                  value={formData.teamComposition}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, teamComposition: value }))
-                  }
+                  value={formData.subIndustry}
+                  onValueChange={(value) => handleSelectChange("subIndustry", value)}
                 >
-                  <SelectTrigger className="h-12 bg-white border-gray-200 focus:border-gray-400 text-sm">
-                    <SelectValue placeholder="Select team composition" />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a sub-industry" />
                   </SelectTrigger>
                   <SelectContent>
-                    {teamCompositions.map((composition) => (
-                      <SelectItem key={composition} value={composition}>
-                        {composition}
+                    {subIndustryOptions[formData.industry as keyof typeof subIndustryOptions].map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {!formData.subIndustry && (
+                  <p className="mt-1 text-sm text-red-600">Please select a sub-industry</p>
+                )}
               </div>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor="additionalInfo" className="text-sm font-medium text-gray-900">Additional Information (Optional)</Label>
-                <Textarea
-                  id="additionalInfo"
-                  name="additionalInfo"
-                  placeholder="Any additional information you'd like to share..."
-                  className="min-h-[80px] bg-white border-gray-200 focus:border-gray-400 text-sm"
-                  value={formData.additionalInfo}
-                  onChange={handleChange}
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Target Customers
+              </label>
+              <Select
+                value={formData.targetCustomers}
+                onValueChange={(value) => handleSelectChange("targetCustomers", value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select target customers" />
+                </SelectTrigger>
+                <SelectContent>
+                  {targetCustomerOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!formData.targetCustomers && (
+                <p className="mt-1 text-sm text-red-600">Please select target customers</p>
+              )}
+            </div>
 
-              <div className="flex justify-center pt-4">
-                <Button
-                  type="submit"
-                  className="px-6 py-3 bg-black text-white rounded-md font-semibold hover:bg-gray-800 text-sm"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Analyzing your idea..." : "Start Analysis"}
-                </Button>
-              </div>
-            </form>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pricing Model
+              </label>
+              <Select
+                value={formData.pricingModel}
+                onValueChange={(value) => handleSelectChange("pricingModel", value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a pricing model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pricingModelOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!formData.pricingModel && (
+                <p className="mt-1 text-sm text-red-600">Please select a pricing model</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Current Stage
+              </label>
+              <Select
+                value={formData.currentStage}
+                onValueChange={(value) => handleSelectChange("currentStage", value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select current stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currentStageOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!formData.currentStage && (
+                <p className="mt-1 text-sm text-red-600">Please select current stage</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Team Composition
+              </label>
+              <Select
+                value={formData.teamComposition}
+                onValueChange={(value) => handleSelectChange("teamComposition", value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select team composition" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamCompositionOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!formData.teamComposition && (
+                <p className="mt-1 text-sm text-red-600">Please select team composition</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Additional Information
+              </label>
+              <Textarea
+                name="additionalInfo"
+                value={formData.additionalInfo}
+                onChange={handleChange}
+                placeholder="Any additional information that might be relevant..."
+                className="w-full"
+                rows={3}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? "Analyzing..." : "Start Analysis"}
+            </Button>
+          </form>
         </div>
       </div>
     </div>

@@ -215,16 +215,19 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero Section with background image */}
         <section className="w-full min-h-[80vh] relative flex items-center py-12 md:py-24 lg:py-32 xl:py-48 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black/80"></div>
           <div className="container relative pl-8 md:pl-12 pr-4 md:pr-6 z-10">
-            <div className="max-w-3xl text-white">
+            <div className="max-w-3xl">
               <div className="relative">
                 <div className="space-y-8">
-                  <div className="h-[180px] sm:h-[200px]">
+                  <div className="h-[180px] sm:h-[200px] flex items-center">
                     <TypingAnimation
                       ideas={productIdeas}
                       className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none"
                       staticText="Validate my"
+                      typingSpeed={100}
+                      deleteSpeed={50}
+                      pauseDuration={2000}
                     />
                   </div>
                   <p className="max-w-[600px] text-white/90 md:text-xl text-left">

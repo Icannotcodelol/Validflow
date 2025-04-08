@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSupabase } from "@/components/providers/SessionProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { User } from '@supabase/supabase-js';
 
 const industryOptions = [
   { value: "technology", label: "Technology" },
@@ -116,7 +117,9 @@ const teamCompositionOptions = [
 
 export default function ValidatePage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const supabase = useSupabase();
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -131,18 +134,36 @@ export default function ValidatePage() {
   });
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/signin");
-    }
-  }, [status, router]);
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/signin");
+      } else {
+        setUser(session.user);
+      }
+      setLoading(false);
+    };
+
+    checkUser();
+  }, [supabase, router]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return null; // Router will redirect to signin
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    if (!session?.user?.id) {
-      setError("You must be signed in to submit an analysis");
+    // Validate required fields
+    if (!formData.description || !formData.industry || !formData.targetCustomers || 
+        !formData.pricingModel || !formData.currentStage || !formData.teamComposition) {
+      setError('Please fill in all required fields');
       setIsLoading(false);
       return;
     }
@@ -153,10 +174,7 @@ export default function ValidatePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          userId: session.user.id,
-        }),
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -165,7 +183,11 @@ export default function ValidatePage() {
       }
 
       const result = await response.json();
-      router.push(`/analysis/${result.analysisId}`);
+      if (result.success && result.analysisId) {
+        router.push(`/analysis/${result.analysisId}`);
+      } else {
+        throw new Error('No analysis ID returned');
+      }
     } catch (error) {
       console.error('Error submitting form:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');

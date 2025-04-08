@@ -3,18 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Header from "@/components/Header";
-import ExecutiveSummary from "@/components/dashboard/ExecutiveSummary";
-import RadarChartSection from "@/components/dashboard/RadarChartSection";
-import StrengthsWeaknesses from "@/components/dashboard/StrengthsWeaknesses";
-import MarketOpportunity from "@/components/dashboard/MarketOpportunity";
-import VCActivity from "@/components/dashboard/VCActivity";
-import ConsumerBehavior from "@/components/dashboard/ConsumerBehavior";
-import CompetitiveLandscape from "@/components/dashboard/CompetitiveLandscape";
-import FinancialProjections from "@/components/dashboard/FinancialProjections";
-import GoToMarketStrategy from "@/components/dashboard/GoToMarketStrategy";
-import RiskAssessment from "@/components/dashboard/RiskAssessment";
-import BarriersToEntry from "@/components/dashboard/BarriersToEntry";
-import { Analysis } from "@/lib/models/analysis";
 import { AnalysisDocument, BaseSectionResponse } from '@/lib/ai/models';
 import { AnalysisDisplay } from '@/components/AnalysisDisplay';
 
@@ -30,19 +18,30 @@ export default function AnalysisPage() {
 
     const fetchAnalysis = async () => {
       try {
+        if (!id) {
+          console.error('No analysis ID provided');
+          setError('No analysis ID provided');
+          setIsLoading(false);
+          return;
+        }
+
         console.log('Fetching analysis:', id);
         const response = await fetch(`/api/analyze?analysisId=${id}`);
         const data = await response.json();
         
+        if (!response.ok) {
+          throw new Error(data.message || data.error || 'Failed to fetch analysis');
+        }
+
         if (!data.success) {
           throw new Error(data.message || 'Failed to fetch analysis');
         }
 
         console.log('Analysis data received:', {
           status: data.analysis.status,
-          sections: Object.keys(data.analysis.sections),
-          completedSections: Object.entries(data.analysis.sections)
-            .filter(([_, section]) => (section as BaseSectionResponse).status === 'completed')
+          sections: Object.keys(data.analysis.sections as Record<string, BaseSectionResponse>),
+          completedSections: Object.entries(data.analysis.sections as Record<string, BaseSectionResponse>)
+            .filter(([_, section]) => section?.status === 'completed')
             .map(([key]) => key)
         });
 
@@ -57,6 +56,7 @@ export default function AnalysisPage() {
         console.error('Error fetching analysis:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
         setIsLoading(false);
+        clearInterval(pollInterval); // Stop polling on error
       }
     };
 
@@ -66,6 +66,9 @@ export default function AnalysisPage() {
       
       // Set up polling every 5 seconds
       pollInterval = setInterval(fetchAnalysis, 5000);
+    } else {
+      setError('No analysis ID provided');
+      setIsLoading(false);
     }
 
     // Cleanup

@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
@@ -9,7 +9,14 @@ export default function SignInPage() {
 
   const handleSignIn = async () => {
     try {
-      await signIn("google", { callbackUrl: "/validate" });
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/validate`
+        }
+      });
+      
+      if (error) throw error;
     } catch (error) {
       console.error("Sign in error:", error);
     }

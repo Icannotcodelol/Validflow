@@ -1,64 +1,47 @@
-import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import User from "@/lib/models/user";
-import { connectToDatabase } from "@/lib/mongodb";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from '@/lib/auth'
 
-export async function POST(req: Request) {
+const supabase = createClient()
+
+export async function POST(req: NextRequest) {
   try {
-    const { email, password, name } = await req.json();
+    const { email, password } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { message: "Email and password are required" },
-        { status: 400 }
-      );
-    }
-
-    await connectToDatabase();
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return NextResponse.json(
-        { message: "User already exists" },
-        { status: 400 }
-      );
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user
-    const user = await User.create({
+    const { data, error } = await supabase.auth.signUp({
       email,
-      password: hashedPassword,
-      name,
-      usage: {
-        analysisCount: 0,
-        monthlyQuota: 5,
-        remainingQuota: 5,
+      password,
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
       },
-      settings: {
-        emailNotifications: true,
-        theme: 'system',
-      },
-    });
+    })
 
-    return NextResponse.json(
-      {
-        message: "User created successfully",
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-        },
-      },
-      { status: 201 }
-    );
+    if (error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
+    }
+
+    // Create user_credits record
+    const { error: creditsError } = await supabase
+      .from('user_credits')
+      .insert({
+        user_id: data.user!.id,
+        free_analysis_used: false
+      })
+
+    if (creditsError) {
+      console.error('Failed to create user credits:', creditsError)
+    }
+
+    return NextResponse.json({
+      user: data.user,
+      message: "Check your email for the confirmation link"
+    })
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json(
-      { message: "Error creating user" },
+      { error: "Failed to register user" },
       { status: 500 }
     );
   }

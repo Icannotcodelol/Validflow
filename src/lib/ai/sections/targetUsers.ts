@@ -1,5 +1,7 @@
 import { UserInput } from "../types";
 import { queryPerplexity } from "@/utils/ai-clients";
+import { MarketSizeGrowthSchema } from "../models";
+import { MarketSizeGrowthData, TargetUsersData } from "@/types/sections";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 2000; // 2 seconds
@@ -152,20 +154,12 @@ Requirements:
 Remember: Return ONLY the JSON object, no additional text.`;
 }
 
-export async function generateTargetUsers(input: UserInput): Promise<any> {
+export async function generateTargetUsers(input: UserInput): Promise<TargetUsersData> {
   const prompt = generateTargetUsersPrompt(input);
   const baseResponse = {
-    sectionId: 'targetUsers',
+    sectionId: 'target-users',
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
-  
-  // Default empty values for required fields
-  const emptyValues = {
-    primaryUserPersonas: [],
-    userSegments: [],
-    userAcquisitionStrategy: '',
-    userRetentionStrategy: ''
   };
   
   try {
@@ -179,10 +173,10 @@ export async function generateTargetUsers(input: UserInput): Promise<any> {
     });
     
     // Try to parse the JSON response
-    let parsedData: any;
     try {
       const content = response.choices[0].message.content;
       // First try to parse the entire content as JSON
+      let parsedData: any;
       try {
         parsedData = JSON.parse(content);
       } catch {
@@ -194,68 +188,70 @@ export async function generateTargetUsers(input: UserInput): Promise<any> {
         parsedData = JSON.parse(jsonMatch[0]);
       }
 
-      // Ensure the parsed data has the required structure
-      if (!parsedData || typeof parsedData !== 'object') {
-        throw new Error('Invalid JSON structure');
+      // Validate the parsed data
+      if (!validateTargetUsersResponse(parsedData)) {
+        console.error('Invalid target users data structure:', parsedData);
+        return {
+          ...baseResponse,
+          status: 'failed',
+          error: 'Invalid response structure'
+        };
       }
 
-      // Initialize missing objects with empty defaults
-      parsedData.primaryUserPersonas = parsedData.primaryUserPersonas || [];
-      parsedData.userSegments = parsedData.userSegments || [];
-      parsedData.userAcquisitionStrategy = parsedData.userAcquisitionStrategy || '';
-      parsedData.userRetentionStrategy = parsedData.userRetentionStrategy || '';
-
-      // Validate and fix primary user personas
-      parsedData.primaryUserPersonas = parsedData.primaryUserPersonas.map((persona: any) => ({
-        name: persona.name || '',
-        description: persona.description || '',
-        painPoints: Array.isArray(persona.painPoints) ? persona.painPoints : [],
-        needs: Array.isArray(persona.needs) ? persona.needs : [],
-        behaviors: Array.isArray(persona.behaviors) ? persona.behaviors : []
-      }));
-
-      // Validate and fix user segments
-      parsedData.userSegments = parsedData.userSegments.map((segment: any) => ({
-        segment: segment.segment || '',
-        size: segment.size || '',
-        characteristics: Array.isArray(segment.characteristics) ? segment.characteristics : []
-      }));
+      // Transform and return the data
+      return transformTargetUsersData(parsedData);
 
     } catch (parseError) {
       console.error('Failed to parse target users JSON:', parseError);
       return {
         ...baseResponse,
-        ...emptyValues,
         status: 'failed',
         error: 'Failed to parse response data'
       };
     }
 
-    // Validate the parsed data
-    if (!validateTargetUsersResponse(parsedData)) {
-      console.error('Invalid target users data structure:', parsedData);
-      return {
-        ...baseResponse,
-        ...emptyValues,
-        status: 'failed',
-        error: 'Invalid response structure'
-      };
-    }
-
-    // If we get here, the data is valid
-    return {
-      ...baseResponse,
-      status: 'completed',
-      ...parsedData
-    };
-
   } catch (error) {
     console.error('Error generating target users analysis:', error);
     return {
       ...baseResponse,
-      ...emptyValues,
       status: 'failed',
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
+}
+
+function transformTargetUsersData(data: any): TargetUsersData {
+  // Transform user personas
+  const primaryUserPersonas = data.user_personas.map((persona: any) => ({
+    name: persona.segment,
+    description: `${persona.segment} - ${persona.demographics.age} years old, ${persona.demographics.location}, ${persona.demographics.income_level} income. ${persona.psychographics.lifestyle}. Values: ${persona.psychographics.values}.`,
+    painPoints: persona.pain_points,
+    needs: persona.needs,
+    behaviors: [persona.psychographics.behaviors]
+  }));
+
+  // Transform user segments
+  const userSegments = data.user_personas.map((persona: any) => ({
+    segment: persona.segment,
+    size: persona.demographics.income_level === 'High' ? '30%' : '70%',
+    characteristics: [
+      `Age: ${persona.demographics.age}`,
+      `Location: ${persona.demographics.location}`,
+      `Income Level: ${persona.demographics.income_level}`,
+      `Values: ${persona.psychographics.values}`,
+      `Lifestyle: ${persona.psychographics.lifestyle}`
+    ]
+  }));
+
+  return {
+    status: 'completed',
+    error: undefined,
+    sectionId: 'target-users',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    primaryUserPersonas,
+    userSegments,
+    userAcquisitionStrategy: data.user_acquisition_strategies.strategies.join('\n'),
+    userRetentionStrategy: data.user_retention_strategies.join('\n')
+  };
 } 

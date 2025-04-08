@@ -101,7 +101,13 @@ function validateMarketSizeGrowthResponse(data: any): data is MarketSizeGrowthRe
 function generateMarketSizeGrowthPrompt(input: UserInput): string {
   return `You are a market research expert specializing in startup market analysis. Your task is to analyze the following business idea and provide a detailed market size and growth analysis.
 
-IMPORTANT: You MUST return ONLY a valid JSON object. Do not include any explanations, markdown, or additional text.
+IMPORTANT INSTRUCTIONS:
+1. Return ONLY a clean, parsable JSON object
+2. Do NOT include any explanations, markdown, or commentary outside the JSON
+3. Ensure the response exactly matches the schema below
+4. Use objective, data-driven language
+5. Replace all placeholder values with relevant content based on the business details
+6. Maintain the exact structure while customizing the content
 
 Business Details:
 Industry: ${input.industry}
@@ -110,50 +116,122 @@ Target Customers: ${input.targetCustomers}
 Description: ${input.description}
 ${input.additionalInfo ? `Additional Info: ${input.additionalInfo}` : ''}
 
-Return a JSON object with this exact structure:
+TEMPLATE TO FOLLOW (replace placeholders with relevant content):
 {
   "totalAddressableMarket": {
-    "size": "Total market size in dollars (e.g., '$500B')",
-    "description": "Detailed analysis of total market size",
-    "methodology": "How the size was calculated"
+    "size": "[TOTAL_MARKET_SIZE_IN_DOLLARS] (e.g., '$500B for global healthcare market')",
+    "description": "[MARKET_OVERVIEW] [KEY_SEGMENTS] [GROWTH_INDICATORS] [MARKET_MATURITY]",
+    "methodology": "[DATA_SOURCES] [CALCULATION_METHOD] [ASSUMPTIONS]"
   },
   "serviceableAddressableMarket": {
-    "size": "SAM size in dollars (e.g., '$100B')",
-    "description": "Detailed analysis of serviceable market",
-    "limitations": ["Key limitations 1", "Key limitations 2"]
+    "size": "[SERVICEABLE_MARKET_SIZE] (e.g., '$100B for home healthcare services')",
+    "description": "[TARGET_MARKET_DEFINITION] [GEOGRAPHIC_SCOPE] [MARKET_NEEDS]",
+    "limitations": [
+      "[GEOGRAPHIC_LIMITATION]",
+      "[REGULATORY_LIMITATION]",
+      "[TECHNOLOGICAL_LIMITATION]"
+    ]
   },
   "serviceableObtainableMarket": {
-    "size": "SOM size in dollars (e.g., '$10B')",
-    "description": "Detailed analysis of obtainable market",
-    "timeframe": "Expected timeframe to achieve (e.g., '3-5 years')",
-    "assumptions": ["Key assumption 1", "Key assumption 2"]
+    "size": "[OBTAINABLE_MARKET_SIZE] (e.g., '$10B initial target market')",
+    "description": "[REALISTIC_MARKET_CAPTURE] [COMPETITIVE_LANDSCAPE] [ENTRY_STRATEGY]",
+    "timeframe": "[YEARS_TO_ACHIEVE] (e.g., '3-5 years')",
+    "assumptions": [
+      "[MARKET_PENETRATION_RATE]",
+      "[COMPETITIVE_RESPONSE]",
+      "[GROWTH_TRAJECTORY]"
+    ]
   },
   "growthRate": {
-    "current": "Current annual growth rate (e.g., '15%')",
-    "projected": "Projected growth rate (e.g., '20%')",
-    "factors": ["Growth factor 1", "Growth factor 2"]
+    "current": "[CURRENT_GROWTH_RATE] (e.g., '15% annually')",
+    "projected": "[PROJECTED_GROWTH_RATE] (e.g., '20% annually')",
+    "factors": [
+      "[PRIMARY_GROWTH_DRIVER]",
+      "[SECONDARY_GROWTH_DRIVER]",
+      "[MARKET_CONDITION]"
+    ]
   },
   "marketTrends": [
     {
-      "trend": "Trend name",
-      "description": "Trend description",
-      "impact": "Impact on market",
-      "timeframe": "Expected duration"
+      "trend": "[TREND_NAME] (e.g., 'Shift to Remote Healthcare')",
+      "description": "[TREND_DETAILS] [MARKET_IMPACT] [ADOPTION_RATE]",
+      "impact": "[BUSINESS_IMPACT] [OPPORTUNITY_SIZE] [RISK_FACTORS]",
+      "timeframe": "[TREND_DURATION] (e.g., '2-3 years')"
     }
   ],
   "marketDrivers": [
     {
-      "driver": "Driver name",
-      "description": "Driver description",
-      "impact": "Impact on market"
+      "driver": "[DRIVER_NAME] (e.g., 'Aging Population')",
+      "description": "[DRIVER_DETAILS] [SUPPORTING_DATA]",
+      "impact": "[QUANTIFIED_IMPACT] [MARKET_EFFECT]"
     }
   ],
   "marketChallenges": [
     {
-      "challenge": "Challenge name",
-      "description": "Challenge description",
-      "impact": "Impact on market",
-      "mitigation": "Potential mitigation strategies"
+      "challenge": "[CHALLENGE_NAME] (e.g., 'Regulatory Compliance')",
+      "description": "[CHALLENGE_DETAILS] [MARKET_IMPLICATIONS]",
+      "impact": "[BUSINESS_IMPACT] [MARKET_EFFECT]",
+      "mitigation": "[MITIGATION_STRATEGY] [IMPLEMENTATION_APPROACH]"
+    }
+  ]
+}
+
+Example Response (for reference only):
+{
+  "totalAddressableMarket": {
+    "size": "$500B",
+    "description": "The global healthcare services market encompasses all medical care delivery, including hospitals, clinics, and home care services. Growing at 8.5% CAGR, driven by aging populations and increased healthcare spending.",
+    "methodology": "Based on WHO healthcare spending data, industry reports from McKinsey and Deloitte, validated against regional market analyses."
+  },
+  "serviceableAddressableMarket": {
+    "size": "$100B",
+    "description": "The home healthcare services segment focuses on post-acute care, chronic disease management, and elderly care services in developed markets.",
+    "limitations": [
+      "Initial focus on US, Canada, and Western Europe markets",
+      "Regulatory requirements vary by region",
+      "Limited to regions with strong internet infrastructure"
+    ]
+  },
+  "serviceableObtainableMarket": {
+    "size": "$10B",
+    "description": "Targeting urban areas in the US initially, focusing on post-acute care and chronic disease management segments.",
+    "timeframe": "3-5 years",
+    "assumptions": [
+      "5% market penetration in target regions",
+      "Limited initial competition from established players",
+      "Steady expansion across major metropolitan areas"
+    ]
+  },
+  "growthRate": {
+    "current": "15%",
+    "projected": "20%",
+    "factors": [
+      "Increasing elderly population requiring home care",
+      "Rising healthcare costs driving home care adoption",
+      "Technology adoption enabling remote care delivery"
+    ]
+  },
+  "marketTrends": [
+    {
+      "trend": "Shift to Remote Healthcare",
+      "description": "Accelerating adoption of telehealth and remote monitoring solutions",
+      "impact": "Expected to drive 30% of home healthcare delivery within 2 years",
+      "timeframe": "2-3 years"
+    }
+  ],
+  "marketDrivers": [
+    {
+      "driver": "Aging Population",
+      "description": "65+ population growing at 3% annually in target markets",
+      "impact": "Drives 40% of market growth in home healthcare services"
+    }
+  ],
+  "marketChallenges": [
+    {
+      "challenge": "Regulatory Compliance",
+      "description": "Complex healthcare regulations and licensing requirements",
+      "impact": "Increases operational costs by 15-20%",
+      "mitigation": "Partnership with regulatory compliance experts and phased regional expansion"
     }
   ]
 }
@@ -171,6 +249,16 @@ Remember: Return ONLY the JSON object, no additional text.`;
 }
 
 function transformMarketSizeGrowthData(data: any): MarketSizeGrowthData {
+  // Extract projections from TAM and SAM data
+  const projections = [
+    { year: '2024', value: `$${data.SAM.statistics.size['2024']}B` },
+    { year: '2025', value: `$${data.TAM.statistics.size['2025']}B` },
+    { year: '2030', value: `$${data.TAM.statistics.size['2030']}B` }
+  ];
+
+  // Create a comprehensive analysis string
+  const analysis = `The total addressable market (TAM) for healthcare services is projected to reach $${data.TAM.statistics.size['2030']}B by 2030. The serviceable addressable market (SAM) shows a CAGR of ${data.SAM.statistics.growthRate}%, with ${data.SAM.statistics.focus}. The serviceable obtainable market (SOM) is estimated at ${data.SOM.statistics.captureEstimate} with ${data.SOM.statistics.realisticGrowth}.`;
+
   return {
     status: 'completed',
     error: undefined,
@@ -178,15 +266,12 @@ function transformMarketSizeGrowthData(data: any): MarketSizeGrowthData {
     createdAt: new Date(),
     updatedAt: new Date(),
     marketSize: {
-      total: data.totalAddressableMarket.size,
-      addressable: data.serviceableAddressableMarket.size,
-      obtainable: data.serviceableObtainableMarket.size,
-      growth: data.growthRate.current,
-      analysis: data.totalAddressableMarket.description,
-      projections: data.marketTrends.map((trend: any) => ({
-        year: trend.timeframe,
-        value: trend.impact
-      }))
+      total: `$${data.TAM.statistics.size['2025']}B`,
+      addressable: `$${data.SAM.statistics.size['2024']}B`,
+      obtainable: `$${data.SOM.statistics.marketSize['2025']}B`,
+      growth: `${data.SAM.statistics.growthRate}% CAGR`,
+      analysis,
+      projections
     }
   };
 }
@@ -265,8 +350,10 @@ export async function generateMarketSizeGrowth(input: UserInput): Promise<Market
         };
       }
 
-      // Transform the data to the expected format
-      return transformMarketSizeGrowthData(parsedData);
+      // Transform and return the data
+      const transformedData = transformMarketSizeGrowthData(parsedData);
+      console.log('Transformed market size growth data:', transformedData);
+      return transformedData;
 
     } catch (parseError) {
       console.error('Failed to parse market size growth JSON:', parseError);

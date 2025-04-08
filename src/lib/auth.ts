@@ -1,25 +1,37 @@
-import { NextAuthOptions } from "next-auth";
-import { MongoDBAdapter } from "@auth/mongodb-adapter";
-import GoogleProvider from "next-auth/providers/google";
-import clientPromise from "@/lib/mongodb";
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import type { Database } from '@/types/supabase'
+import { checkSupabaseEnv } from './supabase/env-check'
 
-export const authOptions: NextAuthOptions = {
-  adapter: MongoDBAdapter(clientPromise),
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
-  callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/signin",
-  },
-}; 
+export const createClient = () => {
+  checkSupabaseEnv()
+  return createServerComponentClient<Database>({ cookies })
+}
+
+export const getSession = async () => {
+  const supabase = createClient()
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    return session
+  } catch (error) {
+    console.error('Error:', error)
+    return null
+  }
+}
+
+export const getUserDetails = async () => {
+  const supabase = createClient()
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    return user
+  } catch (error) {
+    console.error('Error:', error)
+    return null
+  }
+}
+
+const supabase = createClient()
+
+export default supabase 

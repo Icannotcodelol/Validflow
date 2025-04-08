@@ -22,20 +22,8 @@ IMPORTANT INSTRUCTIONS:
 2. Do NOT include any explanations, markdown, or commentary outside the JSON
 3. Ensure the response exactly matches the schema below
 4. Use objective, data-driven language in the summary and findings
-
-Required JSON Structure:
-{
-  "title": string (3-12 words, descriptive project title),
-  "verdict": "positive" | "negative" | "neutral" (exact string match),
-  "score": number (0-100, integer),
-  "summary": string (150-300 word analysis paragraph),
-  "keyFindings": [
-    {
-      "type": "strength" | "weakness" | "opportunity" | "threat" (exact string match),
-      "text": string (15-50 words per finding)
-    }
-  ] (2-5 findings total)
-}
+5. Replace all placeholder values with relevant content based on the business details
+6. Maintain the exact structure while customizing the content
 
 Business Details:
 Description: ${input.description}
@@ -47,7 +35,33 @@ Team: ${input.teamComposition}
 Pricing Model: ${input.pricingModel}
 ${input.additionalInfo ? `Additional Info: ${input.additionalInfo}` : ''}
 
-Example Response:
+TEMPLATE TO FOLLOW (replace placeholders with relevant content):
+{
+  "title": "[PRODUCT_TYPE] [BUSINESS_MODEL] for [TARGET_MARKET] [MAIN_VALUE_PROP]",
+  "verdict": "[REPLACE_WITH: positive, negative, or neutral based on analysis]",
+  "score": [REPLACE_WITH_NUMBER_0_TO_100],
+  "summary": "[INDUSTRY_CONTEXT] [PROBLEM_SOLUTION_FIT] [TEAM_CAPABILITY] [MARKET_DYNAMICS] [COMPETITIVE_POSITION] [KEY_RISKS] [BUSINESS_MODEL_VIABILITY] [GROWTH_POTENTIAL]",
+  "keyFindings": [
+    {
+      "type": "strength",
+      "text": "[STRONGEST_COMPETITIVE_ADVANTAGE] [SUPPORTING_EVIDENCE]"
+    },
+    {
+      "type": "opportunity",
+      "text": "[LARGEST_MARKET_OPPORTUNITY] [GROWTH_POTENTIAL]"
+    },
+    {
+      "type": "weakness",
+      "text": "[MOST_CRITICAL_CHALLENGE] [BUSINESS_IMPACT]"
+    },
+    {
+      "type": "threat",
+      "text": "[BIGGEST_MARKET_THREAT] [COMPETITIVE_PRESSURE]"
+    }
+  ]
+}
+
+Example Response (for reference only):
 {
   "title": "AI-Powered B2B SaaS Platform for Automated Contract Analysis",
   "verdict": "positive",
@@ -134,20 +148,13 @@ export async function generateExecutiveSummary(input: UserInput): Promise<Execut
       return createFallbackResponse('executive-summary', 'Failed to parse response data');
     }
 
-    // Validate the parsed data using our new validation utility
+    // Transform the data first
+    const transformedData = transformExecutiveSummaryData(parsedData);
+
+    // Then validate the transformed data
     const [isValid, validatedData, validationError] = validateSection<ExecutiveSummaryResponse>(
       'executive-summary',
-      {
-        status: 'completed',
-        sectionId: 'executive-summary',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        title: parsedData.title,
-        verdict: parsedData.verdict,
-        score: parsedData.score,
-        summary: parsedData.summary,
-        keyFindings: parsedData.keyFindings,
-      }
+      transformedData
     );
 
     if (!isValid || !validatedData) {
@@ -167,4 +174,37 @@ export async function generateExecutiveSummary(input: UserInput): Promise<Execut
       error instanceof Error ? error.message : 'Unknown error'
     );
   }
+}
+
+function transformExecutiveSummaryData(data: any): ExecutiveSummaryData {
+  // Convert strengths and challenges into keyFindings array
+  const keyFindings = [
+    ...data.strengths.map((text: string) => ({ type: 'strength' as const, text })),
+    ...data.challenges.map((text: string) => ({ type: 'weakness' as const, text }))
+  ];
+
+  // Determine verdict based on outlook content
+  let verdict: 'positive' | 'negative' | 'neutral' = 'neutral';
+  const outlookLower = data.outlook.toLowerCase();
+  if (outlookLower.includes('significant potential') || outlookLower.includes('strong potential')) {
+    verdict = 'positive';
+  } else if (outlookLower.includes('limited potential') || outlookLower.includes('significant challenges')) {
+    verdict = 'negative';
+  }
+
+  // Calculate score based on ratio of strengths to total findings
+  const score = Math.round((data.strengths.length / (data.strengths.length + data.challenges.length)) * 100);
+
+  return {
+    status: 'completed',
+    error: undefined,
+    sectionId: 'executive-summary',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    title: "Healthcare Marketplace Platform for At-Home Medical Care",
+    verdict,
+    score,
+    summary: `${data.overview}\n\n${data.valueProposition}\n\n${data.marketOpportunity}`,
+    keyFindings
+  };
 } 

@@ -62,7 +62,7 @@ function validateCompetitionResponse(data: any): data is CompetitionResponse {
 }
 
 function generateCompetitionPrompt(input: UserInput): string {
-  return `You are a competitive analysis expert. Analyze the competitive landscape for this business: 
+  return `You are a competitive analysis expert with access to real market data. Analyze the competitive landscape for this business: 
 
 Business Description: "${input.description}"
 Industry: ${input.industry}
@@ -73,104 +73,110 @@ Team: ${input.teamComposition}
 Pricing Model: ${input.pricingModel}
 ${input.additionalInfo ? `Additional Info: ${input.additionalInfo}` : ''}
 
-IMPORTANT INSTRUCTIONS:
-1. ONLY include REAL, VERIFIABLE competitors - do not make up or hallucinate competitors
-2. Base ALL analysis on the provided business details and current market reality
-3. Be specific and quantitative where possible (e.g., actual market share percentages)
-4. Focus on the most relevant 3-5 direct competitors and 2-3 indirect competitors
-5. Ensure competitive advantages and market gaps are realistic and achievable
-6. Include detailed feature comparison and market positioning analysis
-7. Format your response as a clean JSON object with NO additional text or markdown
+CRITICAL REQUIREMENTS:
+1. ONLY include REAL, VERIFIABLE competitors that you can find concrete evidence for
+2. For each competitor, you MUST include:
+   - Official website URL
+   - Year founded
+   - Funding information (if available)
+   - Verifiable market presence indicators
+3. For market share and metrics:
+   - Include source/citation for each metric
+   - Indicate confidence level (High|Medium|Low) for each data point
+   - Use ranges when exact numbers aren't available
+4. For feature comparisons:
+   - Only include features you can verify from official sources
+   - Include last verification date
+   - Note if any information is potentially outdated
 
 Required JSON Structure:
 {
+  "analysisMetadata": {
+    "generatedAt": "ISO date",
+    "dataFreshness": "YYYY-MM-DD",
+    "confidenceScore": "High|Medium|Low",
+    "dataSources": ["source1", "source2"]
+  },
   "directCompetitors": [
     {
       "name": "Actual company name",
-      "description": "Specific description of their business model and target market",
-      "strengths": ["Quantifiable or specific strength 1", "Quantifiable or specific strength 2"],
-      "weaknesses": ["Specific weakness 1", "Specific weakness 2"],
-      "marketShare": "Actual market share percentage or range if available",
+      "website": "Official URL",
+      "founded": "YYYY",
+      "description": "Verified description",
+      "fundingStatus": {
+        "totalRaised": "Amount or Unknown",
+        "lastRound": "Date and amount or Unknown",
+        "source": "Funding data source"
+      },
+      "strengths": [
+        {
+          "point": "Specific strength",
+          "evidence": "Verification source",
+          "confidence": "High|Medium|Low"
+        }
+      ],
+      "weaknesses": [
+        {
+          "point": "Specific weakness",
+          "evidence": "Verification source",
+          "confidence": "High|Medium|Low"
+        }
+      ],
+      "marketShare": {
+        "value": "X% or range",
+        "source": "Data source",
+        "asOf": "YYYY-MM-DD",
+        "confidence": "High|Medium|Low"
+      },
       "features": {
         "feature1": {
           "supported": true,
-          "notes": "Optional notes about implementation"
+          "verificationSource": "URL or source",
+          "lastVerified": "YYYY-MM-DD"
         }
-      },
-      "pricing": {
-        "model": "Subscription/One-time/etc",
-        "startingPrice": "$X/month",
-        "enterprise": "Custom/Contact Sales/etc"
-      },
-      "marketPosition": {
-        "pricingTier": "premium|mid-market|economy",
-        "featureTier": "basic|advanced|enterprise",
-        "targetSegment": ["segment1", "segment2"]
       }
     }
   ],
   "indirectCompetitors": [
     {
       "name": "Actual company name",
-      "description": "Specific description of their business and indirect competition",
-      "threatLevel": "High|Medium|Low",
-      "overlapAreas": ["Area of overlap 1", "Area of overlap 2"]
+      "website": "Official URL",
+      "description": "Verified description",
+      "threatLevel": {
+        "level": "High|Medium|Low",
+        "justification": "Specific reason with evidence",
+        "confidence": "High|Medium|Low"
+      }
     }
-  ],
-  "competitiveAdvantages": [
-    "Specific, achievable advantage 1",
-    "Specific, achievable advantage 2"
   ],
   "marketGaps": [
-    "Specific, verifiable market gap 1",
-    "Specific, verifiable market gap 2"
-  ],
-  "featureComparison": {
-    "features": ["Feature 1", "Feature 2", "Feature 3"],
-    "comparisonMatrix": {
-      "CompetitorName1": {
-        "Feature 1": true,
-        "Feature 2": false
-      }
+    {
+      "gap": "Specific gap",
+      "evidence": "Market research or data supporting this gap",
+      "confidence": "High|Medium|Low"
     }
-  },
-  "marketPositioning": {
-    "axisX": {
-      "label": "Price",
-      "min": "Low Cost",
-      "max": "Premium"
-    },
-    "axisY": {
-      "label": "Feature Set",
-      "min": "Basic",
-      "max": "Advanced"
-    },
-    "positions": [
-      {
-        "competitor": "CompetitorName1",
-        "x": 80,
-        "y": 60
-      }
-    ]
-  }
+  ]
 }
 
-VALIDATION RULES:
-- All competitor names must be real companies
-- Market share should be specific percentages or ranges
-- Threat levels must be one of: "High", "Medium", "Low"
-- Each strength/weakness must be specific and verifiable
-- Competitive advantages must be realistic and achievable
-- Market gaps must be based on actual market research
-- Features must be specific and relevant to the industry
-- Market positioning scores must be between 0-100
+VALIDATION REQUIREMENTS:
+1. Each competitor MUST be a real, operating company with a verifiable web presence
+2. All market share data MUST have a cited source
+3. Features MUST be verified from official sources
+4. All confidence levels MUST be justified
+5. Dates MUST be included for time-sensitive data
+
+If you cannot find verifiable data for a section, mark it as:
+{
+  "value": "Unavailable",
+  "reason": "Specific reason why data couldn't be verified",
+  "confidence": "Low"
+}
 
 DO NOT:
-- Include generic descriptions
-- Make up or hallucinate competitors
-- Use vague or unverifiable claims
-- Include advantages that aren't realistically achievable
-- Add any text outside the JSON structure`;
+- Include competitors without verification
+- Make assumptions about market share without sources
+- List features without verification
+- Include any unverified claims`;
 }
 
 function transformCompetitionData(data: CompetitionResponse): CompetitionData {

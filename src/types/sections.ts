@@ -58,8 +58,6 @@ export interface MarketSizeGrowthData extends BaseSectionResponse {
       value: string;
     }>;
   };
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
 }
 
 export interface MarketSizeGrowthResponse extends MarketSizeGrowthData {
@@ -250,13 +248,24 @@ export interface GoToMarketPlanResponse extends GoToMarketPlanData {
 
 // Critical Thought Questions Types
 export interface CriticalThoughtQuestionsData extends BaseSectionResponse {
-  questions?: Array<{
+  questions: Array<{
     category: string;
-    questions: Array<{
-      question: string;
-      importance: 'high' | 'medium' | 'low';
-      context?: string;
-    }>;
+    question: string;
+    analysis: string;
+    priority: 'high' | 'medium' | 'low';
+    implications: string[];
+    recommendations: string[];
+  }>;
+  riskAssessment: {
+    highPriority: string[];
+    mediumPriority: string[];
+    lowPriority: string[];
+  };
+  actionItems: Array<{
+    item: string;
+    priority: 'high' | 'medium' | 'low';
+    timeline: string;
+    owner: string;
   }>;
 }
 
@@ -266,29 +275,84 @@ export interface CriticalThoughtQuestionsResponse extends CriticalThoughtQuestio
 
 // VC Sentiment Types
 export interface VCSentimentData extends BaseSectionResponse {
-  sentiment?: {
-    overall: 'positive' | 'neutral' | 'negative';
-    confidence: number;
-    keyFactors: string[];
+  overview?: {
+    score?: number;
+    confidence?: number;
+    summary?: string;
+    verdict?: string;
   };
-  marketTrends?: Array<{
-    trend: string;
-    impact: string;
-    confidence: number;
-  }>;
-  notableTransactions?: Array<{
-    company: string;
-    amount: string;
-    date: string;
-    investors: string[];
-    purpose?: string;
-    valuation?: string;
-  }>;
-  recommendations?: Array<{
-    category: string;
-    items: string[];
-    priority: 'high' | 'medium' | 'low';
-  }>;
+  investmentAttractiveness?: {
+    score?: number;
+    confidence?: number;
+    strengths?: string[];
+    weaknesses?: string[];
+    opportunities?: string[];
+    threats?: string[];
+  };
+  marketActivity?: {
+    investmentVolume?: {
+      total?: string;
+      timeframe?: string;
+      trend?: string;
+      growth?: string;
+      analysis?: string;
+    };
+    notableTransactions?: Array<{
+      date?: string;
+      company?: string;
+      round?: string;
+      amount?: string;
+      investors?: string[];
+      valuation?: string;
+    }>;
+    comparableExits?: Array<{
+      company?: string;
+      date?: string;
+      type?: string;
+      value?: string;
+      details?: string;
+    }>;
+  };
+  marketTrends?: {
+    overview?: string;
+    trends?: Array<{
+      name?: string;
+      impact?: string;
+      timeline?: string;
+    }>;
+    investorSentiment?: {
+      overall?: string;
+      keyFactors?: string[];
+      concerns?: string[];
+      outlook?: string;
+    };
+  };
+  fundingStrategy?: {
+    recommendedRound?: {
+      type?: string;
+      targetAmount?: string;
+      timing?: string;
+      valuation?: {
+        range?: string;
+        basis?: string[];
+      };
+    };
+    useOfFunds?: Array<{
+      category?: string;
+      allocation?: string;
+      details?: string;
+    }>;
+    targetInvestors?: Array<{
+      type?: string;
+      focus?: string[];
+      examples?: string[];
+    }>;
+    milestones?: Array<{
+      milestone?: string;
+      timeline?: string;
+      impact?: string;
+    }>;
+  };
 }
 
 export interface VCSentimentResponse extends VCSentimentData {

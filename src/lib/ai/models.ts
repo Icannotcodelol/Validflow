@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { ObjectId } from 'mongodb';
 
 // Base schema that all sections must implement
 export const BaseSectionSchema = z.object({
@@ -16,6 +15,7 @@ export interface BaseSectionResponse {
   createdAt: Date;
   updatedAt: Date;
   status: 'pending' | 'completed' | 'failed';
+  data?: any;
   error?: string;
 }
 
@@ -228,47 +228,85 @@ export type CriticalThoughtQuestions = BaseSectionResponse & z.infer<typeof Crit
 
 // VC Sentiment Section
 export const VCSentimentSchema = z.object({
-  marketSentiment: z.object({
-    overall: z.string().min(1, "Overall sentiment is required"),
-    confidence: z.enum(['High', 'Medium', 'Low']),
-    keyFactors: z.array(z.string().min(1, "Factor cannot be empty")).min(1, "At least one key factor is required"),
-    risks: z.array(z.string().min(1, "Risk cannot be empty")).min(1, "At least one risk is required")
+  overview: z.object({
+    score: z.number().min(0).max(100),
+    confidence: z.number().min(0).max(100),
+    summary: z.string(),
+    verdict: z.string()
   }),
-  recentInvestments: z.array(z.object({
-    company: z.string().min(1, "Company name is required"),
-    amount: z.string().min(1, "Investment amount is required"),
-    date: z.string().min(1, "Investment date is required"),
-    investors: z.array(z.string().min(1, "Investor name cannot be empty")).min(1, "At least one investor is required"),
-    purpose: z.string().min(1, "Investment purpose is required"),
-    valuation: z.string().min(1, "Company valuation is required")
-  })).min(1, "At least one recent investment is required"),
-  investmentTrends: z.array(z.object({
-    trend: z.string().min(1, "Trend name is required"),
-    description: z.string().min(1, "Trend description is required"),
-    impact: z.string().min(1, "Impact description is required"),
-    examples: z.array(z.string().min(1, "Example cannot be empty")).min(1, "At least one example is required")
-  })).min(1, "At least one investment trend is required"),
-  valuationMetrics: z.array(z.object({
-    metric: z.string().min(1, "Metric name is required"),
-    value: z.string().min(1, "Current value is required"),
-    benchmark: z.string().min(1, "Industry benchmark is required"),
-    methodology: z.string().min(1, "Calculation methodology is required")
-  })).min(1, "At least one valuation metric is required"),
-  marketOpportunities: z.array(z.object({
-    opportunity: z.string().min(1, "Opportunity name is required"),
-    description: z.string().min(1, "Opportunity description is required"),
-    potential: z.enum(['High', 'Medium', 'Low']),
-    timeline: z.string().min(1, "Expected timeline is required")
-  })).min(1, "At least one market opportunity is required"),
-  notableTransactions: z.array(z.object({
-    company: z.string().min(1, "Company name is required"),
-    amount: z.string().min(1, "Investment amount is required"),
-    date: z.string().min(1, "Investment date is required"),
-    investors: z.array(z.string().min(1, "Investor name cannot be empty")).min(1, "At least one investor is required"),
-    purpose: z.string().optional(),
-    valuation: z.string().optional()
-  })).min(1, "At least one notable transaction is required")
-}).strict();
+  investmentAttractiveness: z.object({
+    score: z.number().min(0).max(100),
+    confidence: z.number().min(0).max(100),
+    strengths: z.array(z.string()),
+    weaknesses: z.array(z.string()),
+    opportunities: z.array(z.string()),
+    threats: z.array(z.string())
+  }),
+  marketActivity: z.object({
+    investmentVolume: z.object({
+      total: z.string(),
+      timeframe: z.string(),
+      trend: z.string(),
+      growth: z.string(),
+      analysis: z.string()
+    }),
+    notableTransactions: z.array(z.object({
+      date: z.string(),
+      company: z.string(),
+      round: z.string(),
+      amount: z.string(),
+      valuation: z.string().optional(),
+      investors: z.array(z.string())
+    })),
+    comparableExits: z.array(z.object({
+      company: z.string(),
+      type: z.string(),
+      value: z.string(),
+      date: z.string(),
+      details: z.string()
+    }))
+  }),
+  marketTrends: z.object({
+    overview: z.string(),
+    trends: z.array(z.object({
+      name: z.string(),
+      impact: z.string(),
+      timeline: z.string()
+    })),
+    investorSentiment: z.object({
+      overall: z.string(),
+      keyFactors: z.array(z.string()),
+      concerns: z.array(z.string()),
+      outlook: z.string()
+    })
+  }),
+  fundingStrategy: z.object({
+    recommendedRound: z.object({
+      type: z.string(),
+      targetAmount: z.string(),
+      timing: z.string(),
+      valuation: z.object({
+        range: z.string(),
+        basis: z.array(z.string())
+      })
+    }),
+    useOfFunds: z.array(z.object({
+      category: z.string(),
+      allocation: z.string(),
+      details: z.string()
+    })),
+    targetInvestors: z.array(z.object({
+      type: z.string(),
+      focus: z.array(z.string()),
+      examples: z.array(z.string())
+    })),
+    milestones: z.array(z.object({
+      milestone: z.string(),
+      timeline: z.string(),
+      impact: z.string()
+    }))
+  })
+});
 
 export type VCSentiment = BaseSectionResponse & z.infer<typeof VCSentimentSchema>;
 
@@ -390,4 +428,36 @@ export const AnalysisDocumentSchema = z.object({
   status: z.enum(['pending', 'in_progress', 'completed', 'failed']),
 });
 
-export type AnalysisDocument = z.infer<typeof AnalysisDocumentSchema>; 
+export type AnalysisDocument = z.infer<typeof AnalysisDocumentSchema>;
+
+export interface AIModel {
+  id: string;
+  name: string;
+  description: string;
+  provider: string;
+  capabilities: string[];
+}
+
+export const models: AIModel[] = [
+  {
+    id: 'gpt-4',
+    name: 'GPT-4',
+    description: 'Most capable GPT model for complex tasks',
+    provider: 'openai',
+    capabilities: ['text', 'analysis', 'reasoning']
+  },
+  {
+    id: 'claude-3',
+    name: 'Claude 3',
+    description: 'Advanced model for detailed analysis',
+    provider: 'anthropic',
+    capabilities: ['text', 'analysis', 'reasoning']
+  },
+  {
+    id: 'pplx-online',
+    name: 'Perplexity Online',
+    description: 'Real-time information and market research',
+    provider: 'perplexity',
+    capabilities: ['search', 'market-research', 'current-events']
+  }
+] 

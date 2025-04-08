@@ -1,17 +1,17 @@
-import { EventEmitter } from 'events';
-import { connectToDatabase } from './mongodb';
+import { createClient } from './auth'
 
-// Increase the default max listeners limit to prevent warnings
-EventEmitter.defaultMaxListeners = 30;
+// Initialize Supabase client
+const supabase = createClient()
 
-// Initialize MongoDB connection
-connectToDatabase()
-  .then(() => {
-    console.log('MongoDB initialized successfully');
-  })
-  .catch((error) => {
-    console.error('Failed to initialize MongoDB:', error);
-  });
-
-// Export the configured EventEmitter
-export default EventEmitter; 
+export async function initializeServer() {
+  try {
+    // Test Supabase connection
+    const { data, error } = await supabase.from('user_credits').select('count')
+    if (error) throw error
+    
+    console.log('Supabase initialized successfully')
+  } catch (error) {
+    console.error('Failed to initialize Supabase:', error)
+    throw error
+  }
+} 

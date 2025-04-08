@@ -1,4 +1,4 @@
-import { AnalysisDocument } from "@/lib/ai/models";
+import { AnalysisDocument, BaseSectionResponse } from "@/lib/ai/models";
 import { ExecutiveSummary } from "./sections/ExecutiveSummary";
 import { MarketSizeGrowth } from "./sections/MarketSizeGrowth";
 import { TargetUsers } from "./sections/TargetUsers";
@@ -14,18 +14,23 @@ import { Download } from "lucide-react";
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { exportToPDF, exportToCSV, exportToJSON } from "@/utils/export";
+import RevenueCalculator from "./tools/RevenueCalculator";
 
 interface AnalysisDisplayProps {
   analysis: AnalysisDocument;
   isLoading?: boolean;
   error?: string;
+  hideProgress?: boolean;
 }
 
-export function AnalysisDisplay({ analysis, isLoading, error }: AnalysisDisplayProps) {
-  console.log('AnalysisDisplay - Rendering with data:', {
+export function AnalysisDisplay({ analysis, isLoading, error, hideProgress }: AnalysisDisplayProps) {
+  console.log('[AnalysisDisplay] Rendering with analysis:', {
+    id: analysis.id,
     status: analysis.status,
-    sections: Object.keys(analysis.sections),
-    sectionDetails: analysis.sections
+    sections: Object.keys(analysis.sections as Record<string, BaseSectionResponse>),
+    completedSections: Object.entries(analysis.sections as Record<string, BaseSectionResponse>)
+      .filter(([_, section]) => section?.status === 'completed')
+      .map(([key]) => key)
   });
 
   if (isLoading) {
@@ -44,85 +49,100 @@ export function AnalysisDisplay({ analysis, isLoading, error }: AnalysisDisplayP
     );
   }
 
-  // Debug view for development
-  const showDebugView = process.env.NODE_ENV === 'development';
-  if (showDebugView) {
+  // Keep console.log for development debugging
+  if (process.env.NODE_ENV === 'development') {
     console.log('Raw sections data:', JSON.stringify(analysis.sections, null, 2));
   }
 
+  const renderSection = (key: string, section: BaseSectionResponse | undefined) => {
+    if (!section) return null;
+
+    const SectionComponent = {
+      executiveSummary: ExecutiveSummary,
+      marketSizeGrowth: MarketSizeGrowth,
+      targetUsers: TargetUsers,
+      competition: Competition,
+      unitEconomics: UnitEconomics,
+      marketingChannels: MarketingChannels,
+      goToMarketPlan: GoToMarketPlan,
+      vcSentiment: VCSentiment,
+      criticalThoughtQuestions: CriticalThoughtQuestions,
+      reportSummary: ReportSummary,
+    }[key];
+
+    if (!SectionComponent) {
+      console.warn(`No component found for section: ${key}`);
+      return null;
+    }
+
+    if (key === 'vcSentiment') {
+      return (
+        <SectionComponent
+          key={key}
+          status={section.status}
+          error={section.error}
+          data={section.data}
+          isLandingPage={false}
+        />
+      );
+    }
+
+    return (
+      <SectionComponent
+        key={key}
+        status={section.status}
+        error={section.error}
+        data={section.data}
+      />
+    );
+  };
+
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <AnalysisProgress analysis={analysis} />
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => exportToPDF(analysis)}>
-              Export as PDF
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportToCSV(analysis)}>
-              Export as CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportToJSON(analysis)}>
-              Export as JSON
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      
-      {showDebugView && (
-        <div className="p-4 bg-gray-100 rounded-lg overflow-auto">
-          <h3 className="text-lg font-semibold mb-2">Debug View</h3>
-          <pre className="text-sm">{JSON.stringify(analysis.sections, null, 2)}</pre>
+      {!hideProgress && (
+        <div className="flex justify-between items-center">
+          <AnalysisProgress analysis={analysis} />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => exportToPDF(analysis)}>
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportToCSV(analysis)}>
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportToJSON(analysis)}>
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
-
+      
       <div className="space-y-8">
-        {analysis.sections.executiveSummary?.status === 'completed' && (
-          <ExecutiveSummary data={analysis.sections.executiveSummary} />
-        )}
+        {[
+          'executiveSummary',
+          'marketSizeGrowth',
+          'targetUsers',
+          'competition',
+          'unitEconomics',
+        ].map(key => renderSection(key, (analysis.sections as Record<string, BaseSectionResponse>)[key]))}
         
-        {analysis.sections.marketSizeGrowth?.status === 'completed' && (
-          <MarketSizeGrowth data={analysis.sections.marketSizeGrowth} />
-        )}
-        
-        {analysis.sections.targetUsers?.status === 'completed' && (
-          <TargetUsers data={analysis.sections.targetUsers} />
-        )}
-        
-        {analysis.sections.competition?.status === 'completed' && (
-          <Competition data={analysis.sections.competition} />
-        )}
-        
-        {analysis.sections.unitEconomics?.status === 'completed' && (
-          <UnitEconomics data={analysis.sections.unitEconomics} />
-        )}
-        
-        {analysis.sections.marketingChannels?.status === 'completed' && (
-          <MarketingChannels data={analysis.sections.marketingChannels} />
-        )}
-        
-        {analysis.sections.goToMarketPlan?.status === 'completed' && (
-          <GoToMarketPlan data={analysis.sections.goToMarketPlan} />
-        )}
-        
-        {analysis.sections.criticalThoughtQuestions?.status === 'completed' && (
-          <CriticalThoughtQuestions data={analysis.sections.criticalThoughtQuestions} />
-        )}
-        
-        {analysis.sections.vcSentiment?.status === 'completed' && (
-          <VCSentiment data={analysis.sections.vcSentiment} />
-        )}
-        
-        {analysis.sections.reportSummary?.status === 'completed' && (
-          <ReportSummary data={analysis.sections.reportSummary} />
-        )}
+        <RevenueCalculator />
+
+        {[
+          'marketingChannels',
+          'goToMarketPlan',
+          'vcSentiment',
+          'criticalThoughtQuestions',
+          'reportSummary'
+        ].map(key => renderSection(key, (analysis.sections as Record<string, BaseSectionResponse>)[key]))}
       </div>
     </div>
   );

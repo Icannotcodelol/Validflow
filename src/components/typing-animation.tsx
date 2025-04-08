@@ -93,7 +93,7 @@ export function TypingAnimation({
       <div className="flex flex-col leading-[1.15] min-h-[1.2em]">
         <div className="text-white font-bold">{staticText}</div>
         <div 
-          className="text-[#121628] font-bold min-h-[1.2em] whitespace-pre-wrap mt-1"
+          className="text-[#9e3a8c] font-bold min-h-[1.2em] whitespace-pre-wrap mt-1"
           aria-label={`Current idea: ${displayText}`}
         >
           {displayText}

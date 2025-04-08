@@ -1,4 +1,4 @@
-import { Bell, Download, Share2, User } from "lucide-react"
+import { Bell, Download, Share2, User, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -17,7 +17,10 @@ export default function Header() {
           <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
             <span className="text-primary-foreground font-semibold text-sm">VI</span>
           </div>
-          <span className="font-semibold">ValidateMyIdea</span>
+          <div className="flex items-center">
+            <BarChart3 className="h-6 w-6" />
+            <span className="font-semibold">ValidFlow</span>
+          </div>
         </div>
 
         <div className="ml-auto flex items-center gap-2">

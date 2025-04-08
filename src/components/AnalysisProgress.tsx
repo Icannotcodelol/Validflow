@@ -11,8 +11,8 @@ const SECTION_LABELS: Record<keyof AnalysisDocument['sections'], string> = {
   unitEconomics: "Unit Economics",
   marketingChannels: "Marketing Channels",
   goToMarketPlan: "Go-to-Market Plan",
-  criticalThoughtQuestions: "Critical Questions",
   vcSentiment: "VC Sentiment",
+  criticalThoughtQuestions: "Critical Questions",
   reportSummary: "Report Summary",
 };
 
@@ -60,23 +60,37 @@ export function AnalysisProgress({ analysis }: AnalysisProgressProps) {
         </div>
         <Progress value={progress} className="h-2" />
         <div className="grid gap-2">
-          {sections.map((section) => (
-            <div
-              key={section.key}
-              className="flex items-center justify-between p-2 rounded-lg bg-gray-50"
-            >
-              <span className="text-sm">
-                {SECTION_LABELS[section.key as keyof typeof SECTION_LABELS]}
-              </span>
-              {section.data?.status === "completed" ? (
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-              ) : section.data?.status === "failed" ? (
-                <XCircle className="h-4 w-4 text-red-500" />
-              ) : (
-                <Circle className="h-4 w-4 text-gray-400" />
-              )}
-            </div>
-          ))}
+          {[
+            'executiveSummary',
+            'marketSizeGrowth',
+            'targetUsers',
+            'competition',
+            'unitEconomics',
+            'marketingChannels',
+            'goToMarketPlan',
+            'vcSentiment',
+            'criticalThoughtQuestions',
+            'reportSummary'
+          ].map((sectionKey) => {
+            const section = analysis.sections[sectionKey as keyof typeof analysis.sections];
+            return (
+              <div
+                key={sectionKey}
+                className="flex items-center justify-between p-2 rounded-lg bg-gray-50"
+              >
+                <span className="text-sm">
+                  {SECTION_LABELS[sectionKey as keyof typeof SECTION_LABELS]}
+                </span>
+                {section?.status === "completed" ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                ) : section?.status === "failed" ? (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                ) : (
+                  <Circle className="h-4 w-4 text-gray-400" />
+                )}
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

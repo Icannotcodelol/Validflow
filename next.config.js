@@ -1,57 +1,65 @@
 /** @type {import('next').NextConfig} */
-const webpack = require('webpack');
-
 const nextConfig = {
-  env: {
-    PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-    MONGODB_URI: process.env.MONGODB_URI
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'validflow.io'],
+    },
   },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        dns: false,
-        child_process: false,
-        'mongodb-client-encryption': false,
-        aws4: false,
-        timers: require.resolve('timers-browserify'),
-        stream: require.resolve('stream-browserify'),
-        util: require.resolve('util/'),
-        'timers/promises': false,
-        crypto: require.resolve('crypto-browserify'),
-        os: require.resolve('os-browserify/browser'),
-        path: require.resolve('path-browserify'),
-        zlib: require.resolve('browserify-zlib'),
-        http: require.resolve('stream-http'),
-        https: require.resolve('https-browserify'),
-        assert: require.resolve('assert/'),
-        buffer: require.resolve('buffer/'),
-        events: require.resolve('events/'),
-        process: require.resolve('process/browser')
-      };
-
-      // Add buffer to webpack 5 polyfills
-      config.plugins.push(
-        new webpack.ProvidePlugin({
-          Buffer: ['buffer', 'Buffer'],
-          process: 'process/browser'
-        })
-      );
-
-      // Exclude mongodb from client bundle
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        'mongodb-client-encryption': false,
-        'mongodb': false
-      };
-    }
-
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  },
+  images: {
+    domains: ['lh3.googleusercontent.com'],
+  },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
     return config;
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: `
+              default-src 'self';
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://*.stripe.network https://vercel.live https://va.vercel-scripts.com;
+              style-src 'self' 'unsafe-inline';
+              img-src 'self' data: blob: https://*.stripe.com https://validflow.io;
+              frame-src 'self' https://*.stripe.com https://*.stripe.network https://hooks.stripe.com https://vercel.live;
+              connect-src 'self' https://*.stripe.com https://*.stripe.network https://api.stripe.com wss://*.stripe.com https://*.supabase.co https://validflow.io;
+              font-src 'self' data:;
+              object-src 'none';
+              base-uri 'self';
+              form-action 'self';
+              upgrade-insecure-requests;
+            `.replace(/\s{2,}/g, ' ').trim()
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin'
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()'
+          }
+        ]
+      }
+    ];
   }
 }
 
@@ -63,7 +71,9 @@ console.log('Environment Variables Check:', {
   anthropicKeyPrefix: process.env.ANTHROPIC_API_KEY?.substring(0, 8),
   hasOpenAIKey: !!process.env.OPENAI_API_KEY,
   openAIKeyPrefix: process.env.OPENAI_API_KEY?.substring(0, 8),
-  hasMongoDBUri: !!process.env.MONGODB_URI
+  hasMongoDBUri: !!process.env.MONGODB_URI,
+  hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+  hasSupabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 });
 
 module.exports = nextConfig 

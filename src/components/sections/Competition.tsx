@@ -255,7 +255,7 @@ function CompetitionContent({ data, status, error }: CompetitionProps) {
             </TabsContent>
   
             <TabsContent value="positioning">
-              {data.marketPositioning && data.marketPositioning.dataPoints ? (
+              {data.marketPositioning && data.marketPositioning.positions && data.marketPositioning.positions.length > 0 ? (
                 <div className="h-[400px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
@@ -301,7 +301,7 @@ function CompetitionContent({ data, status, error }: CompetitionProps) {
                           return null;
                         }}
                       />
-                      <Scatter name="Competitors" data={data.marketPositioning.dataPoints} fill="#8884d8" />
+                      <Scatter name="Competitors" data={data.marketPositioning.positions} fill="#8884d8" />
                     </ScatterChart>
                   </ResponsiveContainer>
                 </div>

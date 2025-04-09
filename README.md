@@ -1,4 +1,6 @@
-# ValiNow - AI-Powered Startup Idea Validation Platform
+# ValiNow // Test comment to trigger rebuild
+
+This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ValiNow is a high-end startup idea validation platform that uses multiple AI models to provide comprehensive analysis of business ideas. The platform generates detailed reports across multiple sections, each optimized for specific aspects of startup validation.
 

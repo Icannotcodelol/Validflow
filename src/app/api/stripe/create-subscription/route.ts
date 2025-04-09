@@ -56,16 +56,43 @@ export async function POST(req: Request) {
       expand: ['latest_invoice.payment_intent'],
     });
 
-    const invoice = subscription.latest_invoice as Stripe.Invoice;
-    const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+    const latestInvoice = subscription.latest_invoice;
+
+    // Type guard: check that latestInvoice is an object and has a payment_intent, 
+    // and that payment_intent is also an object (not a string ID)
+    if (
+      !latestInvoice ||
+      typeof latestInvoice === 'string' ||
+      !('payment_intent' in latestInvoice) || // Check if key exists
+      !latestInvoice.payment_intent || // Check if value exists
+      typeof latestInvoice.payment_intent === 'string' // Check if value is not the expanded object
+    ) {
+      console.error('Error: Payment Intent not found or not expanded on the latest invoice.', {
+        subscriptionId: subscription.id,
+        latestInvoiceStatus: typeof latestInvoice === 'object' && latestInvoice !== null ? latestInvoice.status : 'N/A', // Safe status access
+      });
+      throw new Error('Subscription created, but initial payment details are missing. Please contact support.');
+    }
+    
+    // Now TypeScript knows payment_intent is the expanded object within the Invoice
+    const paymentIntent = latestInvoice.payment_intent as Stripe.PaymentIntent;
+
+    // Ensure client_secret exists on the PaymentIntent
+    if (!paymentIntent.client_secret) {
+      console.error('Error: Payment Intent client_secret is missing.', {
+        paymentIntentId: paymentIntent.id,
+        paymentIntentStatus: paymentIntent.status
+      });
+      throw new Error('Subscription created, but payment setup failed. Please contact support.');
+    }
 
     // Create a pending payment record in our database
     await supabase.from('payments').insert({
       user_id: session.user.id,
-      stripe_payment_intent_id: paymentIntent.id,
+      stripe_payment_intent_id: paymentIntent.id, 
       stripe_customer_id: customerId,
-      amount: 9999,
-      type: 'unlimited',
+      amount: 9999, // TODO: Consider getting amount dynamically
+      type: 'unlimited', // TODO: Consider getting type dynamically
       status: 'pending',
     });
 
@@ -73,6 +100,7 @@ export async function POST(req: Request) {
       subscriptionId: subscription.id,
       clientSecret: paymentIntent.client_secret,
     });
+
   } catch (error) {
     console.error('Error creating subscription:', error);
     return NextResponse.json(

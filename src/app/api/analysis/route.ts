@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Orchestrator } from '@/lib/ai/orchestrator';
 import { auth } from "@/auth";
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { Database } from "@/types/supabase";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +13,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const orchestrator = new Orchestrator();
+    const supabase = createServerComponentClient<Database>({ cookies });
+    const orchestrator = new Orchestrator(supabase);
+    
     const analysisId = await orchestrator.createAnalysis(session.user.id);
 
     return NextResponse.json({ analysisId });
@@ -36,15 +42,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Analysis ID required" }, { status: 400 });
     }
 
-    const orchestrator = new Orchestrator();
+    const supabase = createServerComponentClient<Database>({ cookies });
+    const orchestrator = new Orchestrator(supabase);
     const analysis = await orchestrator.getAnalysis(analysisId);
 
     if (!analysis) {
       return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
     }
 
-    if (analysis.userId !== session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (analysis.user_id !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json(analysis);

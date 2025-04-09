@@ -10,23 +10,40 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
-async function updateUserCredits(userId: string, credits: number) {
-  const supabase = createClient();
-  await supabase.rpc('add_user_credits', { user_id: userId, credits_to_add: credits });
+// Type guard to check for string type
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
 }
 
-async function updateUserSubscription(userId: string, endDate: Date) {
+async function updateUserCredits(userId: string, credits: number) {
   const supabase = createClient();
-  await supabase.from('user_credits').update({
-    has_unlimited: true,
-    unlimited_until: endDate.toISOString(),
+  // Note: Ensure 'add_user_credits' RPC exists and works as expected
+  const { error } = await supabase.rpc('add_user_credits', { user_id: userId, credits_to_add: credits });
+  if (error) console.error(`Error calling add_user_credits RPC for user ${userId}:`, error);
+}
+
+async function updateUserSubscription(userId: string, endDate: Date | null) {
+  const supabase = createClient();
+  const { error } = await supabase.from('user_credits').update({
+    has_unlimited: endDate !== null,
+    unlimited_until: endDate ? endDate.toISOString() : null,
   }).eq('user_id', userId);
+  if (error) console.error(`Error updating user_credits for user ${userId}:`, error);
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.text();
-    const signature = headers().get('stripe-signature')!;
+    const signature = headers().get('stripe-signature');
+
+    if (!signature) {
+      console.error('Webhook Error: Missing stripe-signature header');
+      return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+    }
+    if (!webhookSecret) {
+      console.error('Webhook Error: Missing STRIPE_WEBHOOK_SECRET env var');
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+    }
 
     let event: Stripe.Event;
 
@@ -36,12 +53,14 @@ export async function POST(req: Request) {
         signature,
         webhookSecret
       );
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err);
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+    } catch (err: any) { // Catch specific Stripe signature error if possible
+      console.error('Webhook signature verification failed:', err.message);
+      return NextResponse.json({ error: `Webhook error: ${err.message}` }, { status: 400 });
     }
 
     const supabase = createClient();
+
+    // Event Handling
 
     switch (event.type) {
       case 'payment_intent.succeeded': {
@@ -52,49 +71,70 @@ export async function POST(req: Request) {
           .update({ status: 'succeeded' })
           .eq('stripe_payment_intent_id', paymentIntent.id);
 
-        // If this was a credit purchase, add credits to user
-        if (paymentIntent.metadata.type === 'credits') {
-          await updateUserCredits(
-            paymentIntent.metadata.userId,
-            parseInt(paymentIntent.metadata.credits)
-          );
+        // If this was a credit purchase, add credits to user (using metadata)
+        const userId = paymentIntent.metadata?.userId;
+        const creditsStr = paymentIntent.metadata?.credits;
+        if (paymentIntent.metadata?.type === 'credits' && isString(userId) && isString(creditsStr)) {
+          const credits = parseInt(creditsStr);
+          if (!isNaN(credits)) {
+            await updateUserCredits(userId, credits);
+          }
         }
         break;
       }
 
       case 'invoice.paid': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
-        if (!subscriptionId) break;
+        const invoice = event.data.object as any;
 
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        
-        // Update payment status
-        if (invoice.payment_intent && typeof invoice.payment_intent === 'string') {
-          await supabase.from('payments')
+        // Type guard: make sure it's a string subscription ID
+        if (!isString(invoice.subscription)) {
+          console.warn(`Invoice ${invoice.id} missing valid subscription ID.`);
+          break;
+        }
+
+        const subscriptionId = invoice.subscription;
+
+        let subscription: any;
+        try {
+          subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        } catch (err) {
+          console.error(`Failed to retrieve subscription ${subscriptionId}:`, err);
+          break;
+        }
+
+        // Handle payment_intent (string or expanded object ID)
+        const paymentIntentId =
+          isString(invoice.payment_intent)
+            ? invoice.payment_intent
+            : invoice.payment_intent?.id;
+
+        if (paymentIntentId) {
+          await supabase
+            .from('payments')
             .update({ status: 'succeeded' })
-            .eq('stripe_payment_intent_id', invoice.payment_intent);
+            .eq('stripe_payment_intent_id', paymentIntentId);
         }
 
-        // Update user's subscription status
-        const userId = subscription.metadata.userId;
-        if (userId) {
-          await updateUserSubscription(
-            userId,
-            new Date(subscription.current_period_end * 1000)
-          );
+        const userId = subscription.metadata?.userId;
+        const currentPeriodEnd = subscription.current_period_end;
+
+        // Ensure userId is string and currentPeriodEnd is number before using
+        if (isString(userId) && typeof currentPeriodEnd === 'number') {
+          await updateUserSubscription(userId, new Date(currentPeriodEnd * 1000));
         }
+
         break;
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata.userId;
-        if (userId) {
-          await supabase.from('user_credits').update({
-            has_unlimited: false,
-            unlimited_until: null,
-          }).eq('user_id', userId);
+        const subscription = event.data.object as any;
+        const userId = subscription.metadata?.userId;
+        if (isString(userId)) {
+          // Set subscription end date to null
+          await updateUserSubscription(userId, null);
+          // Optionally send cancellation email
+          // const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
+          // if (customer.email) { await sendSubscriptionCancelledEmail({ customerEmail: customer.email }); }
         }
         break;
       }
@@ -102,11 +142,23 @@ export async function POST(req: Request) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         
-        // Handle credits purchase
+        // Handle credits purchase successful payment
         if (session.metadata?.type === 'credits' && session.payment_status === 'paid') {
-          const credits = parseInt(session.metadata.credits || '0');
+          const creditsStr = session.metadata.credits;
           const userId = session.metadata.userId;
+          const amountTotal = session.amount_total ?? 0; // Handle null case
 
+          if (!isString(userId) || !isString(creditsStr)) {
+            console.error('Checkout session completed for credits without valid userId/credits in metadata:', session.id);
+            break;
+          }
+
+          const credits = parseInt(creditsStr);
+          if (isNaN(credits)) {
+             console.error('Checkout session completed for credits with invalid credits number in metadata:', session.id);
+             break;
+          }
+          
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('email, full_name')
@@ -114,107 +166,128 @@ export async function POST(req: Request) {
             .single();
 
           if (userError) {
-            console.error('Error fetching user data:', userError);
-            return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 });
+            console.error(`Error fetching user data for userId ${userId}:`, userError);
+            break;
           }
 
-          const { error } = await supabase.rpc('add_credits', {
+          // Add credits via RPC function
+          const { error: rpcError } = await supabase.rpc('add_credits', {
             p_user_id: userId,
             p_credits: credits
           });
 
-          if (error) {
-            console.error('Error adding credits:', error);
-            return NextResponse.json({ error: 'Failed to add credits' }, { status: 500 });
+          if (rpcError) {
+            console.error(`Error calling add_credits RPC for userId ${userId}:`, rpcError);
+            break;
           }
 
           // Send purchase confirmation email
-          await sendPurchaseConfirmation({
-            customerName: userData.full_name || 'Valued Customer',
-            customerEmail: userData.email,
-            credits,
-            amount: session.amount_total,
-            isSubscription: false
-          });
+          if (userData?.email) {
+            try {
+              await sendPurchaseConfirmation({
+                customerName: userData.full_name || 'Valued Customer',
+                customerEmail: userData.email,
+                credits,
+                amount: amountTotal,
+                isSubscription: false
+              });
+            } catch(emailError) {
+              console.error('Failed to send purchase confirmation email:', emailError);
+            }
+          } else {
+             console.warn('Cannot send purchase confirmation email, user email not found for userId:', userId);
+          }
+        }
+        // Handle subscription checkout successful payment (might be handled by invoice.paid/customer.subscription.created)
+        else if (session.mode === 'subscription' && session.payment_status === 'paid') {
+           console.log(`Checkout session ${session.id} completed for subscription.`);
+           // Usually handled by invoice.paid or customer.subscription.created events
         }
         break;
       }
 
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata.userId;
+        const subscription = event.data.object as any;
+        const userId = subscription.metadata?.userId;
+        const currentPeriodEnd = subscription.current_period_end;
 
-        if (userId) {
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('email, full_name')
-            .eq('id', userId)
-            .single();
+        if (isString(userId) && typeof currentPeriodEnd === 'number') {
+          // Update Supabase user_credits table
+          await updateUserSubscription(userId, new Date(currentPeriodEnd * 1000));
 
-          if (userError) {
-            console.error('Error fetching user data:', userError);
-            return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 });
-          }
-
-          const { error } = await supabase.rpc('update_subscription', {
-            p_user_id: userId,
-            p_subscription_id: subscription.id,
-            p_current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString()
-          });
-
-          if (error) {
-            console.error('Error updating subscription:', error);
-            return NextResponse.json({ error: 'Failed to update subscription' }, { status: 500 });
-          }
-
-          // Send subscription confirmation email for new subscriptions
+          // Send confirmation email ONLY on creation (or maybe first payment success via invoice.paid?)
           if (event.type === 'customer.subscription.created') {
-            await sendPurchaseConfirmation({
-              customerName: userData.full_name || 'Valued Customer',
-              customerEmail: userData.email,
-              subscriptionEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
-              isSubscription: true
-            });
+             const { data: userData, error: userError } = await supabase
+               .from('users')
+               .select('email, full_name')
+               .eq('id', userId)
+               .single();
+
+             if (!userError && userData?.email) {
+                try {
+                  await sendPurchaseConfirmation({
+                    customerName: userData.full_name || 'Valued Customer',
+                    customerEmail: userData.email,
+                    subscriptionEnd: new Date(currentPeriodEnd * 1000).toISOString(),
+                    isSubscription: true
+                  });
+                } catch (emailError) {
+                  console.error('Failed to send subscription confirmation email:', emailError);
+                }
+             } else {
+                console.error(`Error fetching user data for subscription confirmation email or email missing for userId ${userId}:`, userError);
+             }
           }
         }
         break;
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        console.error('Payment failed for invoice:', invoice.id);
+        const invoice = event.data.object as any;
+        console.warn('Payment failed for invoice:', invoice.id, '- Customer:', invoice.customer);
         
-        if (invoice.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-          const userId = subscription.metadata.userId;
+        // Check if subscription ID exists and is a string
+        if (isString(invoice.subscription)) {
+          const subscriptionId = invoice.subscription;
+          try {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+            const userId = subscription.metadata?.userId;
 
-          if (userId) {
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('email, full_name')
-              .eq('id', userId)
-              .single();
+            if (isString(userId)) {
+              const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('email, full_name')
+                .eq('id', userId)
+                .single();
 
-            if (userError) {
-              console.error('Error fetching user data:', userError);
-              return NextResponse.json({ error: 'Failed to fetch user data' }, { status: 500 });
+              if (!userError && userData?.email) {
+                 await sendPaymentFailedEmail({
+                   customerName: userData.full_name || 'Valued Customer',
+                   customerEmail: userData.email
+                 });
+              } else {
+                 console.error(`Error fetching user data for payment failed email or email missing for userId ${userId}:`, userError);
+              }
             }
-
-            // Send payment failed email
-            await sendPaymentFailedEmail({
-              customerName: userData.full_name || 'Valued Customer',
-              customerEmail: userData.email
-            });
+          } catch (subError) {
+            console.error(`Failed to retrieve subscription ${subscriptionId} for payment failed event:`, subError);
           }
+        } else {
+           console.warn(`invoice.payment_failed event for invoice ${invoice.id} did not have a valid subscription ID.`);
         }
+        break;
+      }
+
+      default: {
+        console.log(`Unhandled event type: ${event.type}`);
         break;
       }
     }
 
     return NextResponse.json({ received: true });
-  } catch (error) {
-    console.error('Error handling webhook:', error);
+  } catch (error: any) { // Catch any error type
+    console.error('Error handling webhook:', error.message);
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }

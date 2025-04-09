@@ -338,7 +338,6 @@ export type UserInput = z.infer<typeof UserInputSchema>;
 
 // Analysis Document Schema
 export const AnalysisDocumentSchema = z.object({
-  _id: z.instanceof(ObjectId).optional(),
   userId: z.string(),
   userInput: UserInputSchema,
   sections: z.object({

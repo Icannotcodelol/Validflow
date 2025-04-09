@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Orchestrator } from "@/lib/ai/orchestrator";
-import { createClient } from "@/lib/supabase/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase";
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase: SupabaseClient<Database> = createClient();
+    const supabase = createServerComponentClient<Database>({ 
+      cookies: cookies,
+    });
+    
     const orchestrator = new Orchestrator(supabase);
 
     const analysis = await orchestrator.getAnalysis(params.id);

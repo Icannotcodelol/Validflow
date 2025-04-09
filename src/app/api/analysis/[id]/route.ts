@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnalysis } from "@/lib/db/analysis";
+import { Orchestrator } from "@/lib/ai/orchestrator";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const analysis = await getAnalysis(params.id);
+    // Create Supabase client and Orchestrator instance
+    const supabase = createClient(); 
+    const orchestrator = new Orchestrator(supabase);
+
+    const analysis = await orchestrator.getAnalysis(params.id);
     
     if (!analysis) {
       return NextResponse.json(
@@ -15,6 +20,7 @@ export async function GET(
       );
     }
 
+    // Return the analysis document (includes status and sections)
     return NextResponse.json(analysis);
   } catch (error) {
     console.error("Error fetching analysis:", error);

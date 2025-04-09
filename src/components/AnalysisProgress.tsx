@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, Circle } from "lucide-react";
+import { CheckCircle2, XCircle, Circle, Loader2 } from "lucide-react";
 import { AnalysisDocument, BaseSectionResponse } from "@/lib/ai/models";
 
-const SECTION_LABELS: Record<keyof AnalysisDocument['sections'], string> = {
+const SECTION_LABELS: Record<string, string> = {
   executiveSummary: "Executive Summary",
   marketSizeGrowth: "Market Size & Growth",
   targetUsers: "Target Users",
@@ -21,76 +21,93 @@ interface AnalysisProgressProps {
 }
 
 export function AnalysisProgress({ analysis }: AnalysisProgressProps) {
-  console.log('Analysis Progress - Sections:', analysis.sections);
-
-  const sections = Object.entries(analysis.sections).map(([key, data]) => ({
+  // Ensure analysis.sections is treated as an object, default to {} if not
+  const sectionsObject = 
+    typeof analysis.sections === 'object' && analysis.sections !== null 
+      ? analysis.sections 
+      : {};
+      
+  // Now safely use sectionsObject with Object.entries
+  const sections = Object.entries(sectionsObject).map(([key, data]) => ({
     key,
-    data: data as (BaseSectionResponse & any) | undefined,
+    data: data as (BaseSectionResponse & any) | undefined, // Keep existing cast for data
   }));
 
-  const completedSections = sections.filter(
-    (section) => section.data?.status === "completed"
-  ).length;
+  // Calculate progress
+  const totalSections = Object.keys(SECTION_LABELS).length;
+  const completedSections = sections.filter(s => s.data?.status === 'completed').length;
+  const progressPercentage = totalSections > 0 ? (completedSections / totalSections) * 100 : 0;
 
-  const failedSections = sections.filter(
-    (section) => section.data?.status === "failed"
-  ).length;
-
-  const totalSections = sections.length;
-  const progress = (completedSections / totalSections) * 100;
-
-  console.log('Analysis Progress - Stats:', {
-    completed: completedSections,
-    failed: failedSections,
-    total: totalSections,
-    progress
+  // Sort sections to match the defined order in SECTION_LABELS
+  const sortedSections = sections.sort((a, b) => {
+    const orderA = Object.keys(SECTION_LABELS).indexOf(a.key);
+    const orderB = Object.keys(SECTION_LABELS).indexOf(b.key);
+    return (orderA === -1 ? Infinity : orderA) - (orderB === -1 ? Infinity : orderB);
   });
 
+  // Find the first pending section
+  const currentSection = sortedSections.find(s => s.data?.status === 'pending');
+
   return (
-    <Card>
+    <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Analysis Progress</CardTitle>
+        <CardTitle className="text-center">Analysis Progress</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            {completedSections} of {totalSections} sections completed
+      <CardContent>
+        <div className="space-y-4">
+          {/* Progress Bar - Removed for simplicity, can be added back */}
+          {/* Status Indicator */}
+          <div className="text-center text-sm text-muted-foreground mb-4">
+            {currentSection ? (
+              <span className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing: {SECTION_LABELS[currentSection.key] || currentSection.key}...
+              </span>
+            ) : analysis.status === 'completed' ? (
+              <span className="flex items-center justify-center text-green-600">
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Analysis Complete
+              </span>
+            ) : analysis.status === 'failed' ? (
+              <span className="flex items-center justify-center text-red-600">
+                <XCircle className="mr-2 h-4 w-4" />
+                Analysis Failed
+              </span>
+            ) : (
+              <span className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Initializing Analysis...
+              </span>
+            )}
           </div>
-          <div className="text-sm font-medium">{Math.round(progress)}%</div>
-        </div>
-        <Progress value={progress} className="h-2" />
-        <div className="grid gap-2">
-          {[
-            'executiveSummary',
-            'marketSizeGrowth',
-            'targetUsers',
-            'competition',
-            'unitEconomics',
-            'marketingChannels',
-            'goToMarketPlan',
-            'vcSentiment',
-            'criticalThoughtQuestions',
-            'reportSummary'
-          ].map((sectionKey) => {
-            const section = analysis.sections[sectionKey as keyof typeof analysis.sections];
-            return (
-              <div
-                key={sectionKey}
-                className="flex items-center justify-between p-2 rounded-lg bg-gray-50"
-              >
-                <span className="text-sm">
-                  {SECTION_LABELS[sectionKey as keyof typeof SECTION_LABELS]}
-                </span>
-                {section?.status === "completed" ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                ) : section?.status === "failed" ? (
-                  <XCircle className="h-4 w-4 text-red-500" />
-                ) : (
-                  <Circle className="h-4 w-4 text-gray-400" />
-                )}
-              </div>
-            );
-          })}
+
+          {/* Section Status List */}
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+            {sortedSections.map(({ key, data }) => {
+              const label = SECTION_LABELS[key] || key;
+              const status = data?.status || 'queued'; // Default to queued if no data yet
+              const Icon = 
+                status === 'completed' ? CheckCircle2 : 
+                status === 'failed' ? XCircle : 
+                status === 'pending' ? Loader2 : 
+                Circle; // Queued or unknown
+              
+              const colorClass = 
+                status === 'completed' ? 'text-green-600' : 
+                status === 'failed' ? 'text-red-600' : 
+                status === 'pending' ? 'text-blue-600' : 
+                'text-muted-foreground';
+
+              const iconProps = status === 'pending' ? { className: `mr-2 h-4 w-4 animate-spin ${colorClass}` } : { className: `mr-2 h-4 w-4 ${colorClass}` };
+
+              return (
+                <div key={key} className="flex items-center text-sm">
+                  <Icon {...iconProps} />
+                  <span className={status === 'pending' ? 'font-semibold' : ''}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </CardContent>
     </Card>

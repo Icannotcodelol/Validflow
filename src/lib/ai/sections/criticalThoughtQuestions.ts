@@ -1,5 +1,4 @@
 import { CriticalThoughtQuestions, UserInput } from '../models';
-import { CriticalThoughtQuestionsData } from '@/types/sections';
 import Anthropic from '@anthropic-ai/sdk';
   
 const anthropic = new Anthropic({
@@ -60,7 +59,7 @@ interface QuestionInput {
   considerations?: string[];
 }
 
-function transformCriticalThoughtQuestionsData(data: { questions: QuestionInput[] } & Partial<CriticalThoughtQuestions>): CriticalThoughtQuestionsData {
+function transformCriticalThoughtQuestionsData(data: { questions: QuestionInput[] } & Partial<CriticalThoughtQuestions>): CriticalThoughtQuestions {
   // Group questions by category and transform them to the expected format
   const groupedQuestions = data.questions.reduce((acc: Record<string, Array<{
     question: string;
@@ -122,7 +121,7 @@ function isRetryableError(error: any): boolean {
   return false;
 }
 
-export async function generateCriticalThoughtQuestions(input: UserInput): Promise<CriticalThoughtQuestionsData> {
+export async function generateCriticalThoughtQuestions(input: UserInput): Promise<CriticalThoughtQuestions> {
   try {
     const prompt = generateCriticalThoughtQuestionsPrompt(input);
   

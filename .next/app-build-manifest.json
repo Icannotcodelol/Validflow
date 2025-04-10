@@ -16,10 +16,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/validate/page.js"
     ],
-    "/signin/page": [
+    "/analysis/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/signin/page.js"
+      "static/chunks/app/analysis/[id]/page.js"
     ]
   }
 }

@@ -208,21 +208,108 @@ export const GoToMarketPlanSchema = BaseSectionSchema.extend({
     budget: z.string().min(1, "Budget is required"),
     technology: z.array(z.string().min(1, "Technology requirement cannot be empty")).min(1, "At least one technology requirement is required"),
   }),
+  channelStrategies: z.array(z.object({
+      channel: z.string().min(1, "Channel name is required"),
+      strategy: z.string().min(1, "Strategy description is required"),
+      estimatedCAC: z.string().describe("Estimated Customer Acquisition Cost (e.g., '$50', 'Low')"),
+  })).min(1, "At least one channel strategy is required"),
+  industryConversionBenchmarks: z.string().describe("Relevant industry conversion rate benchmarks (e.g., '2-5% for SaaS landing pages')"),
+  phasedRolloutPlan: z.array(z.object({
+      phase: z.string().min(1, "Rollout phase name is required"),
+      timeline: z.string().min(1, "Timeline is required"),
+      userTarget: z.string().optional().describe("Target number of users for this phase"),
+      revenueTarget: z.string().optional().describe("Target revenue for this phase"),
+      keyActivities: z.array(z.string().min(1, "Activity cannot be empty")).min(1, "At least one activity required per phase"),
+  })).min(1, "At least one rollout phase is required"),
 }).strict();
 
 export type GoToMarketPlan = BaseSectionResponse & z.infer<typeof GoToMarketPlanSchema>;
 
+// Actionable Item Schema (for reuse in recommendations/next steps)
+export const ActionableItemSchema = z.object({
+  step: z.string().min(1, "Step description cannot be empty"),
+  resourcesNeeded: z.array(z.string()).describe("List of resources (e.g., team members, budget, tools)"),
+  decisionCriteria: z.string().describe("Criteria for deciding to proceed, pivot, or stop based on this step's outcome"),
+  timeline: z.string().optional().describe("Estimated timeline for this step"),
+  priority: z.enum(['high', 'medium', 'low']).optional(),
+});
+
+// Also export the inferred type
+export type ActionableItem = z.infer<typeof ActionableItemSchema>;
+
+// Validation Roadmap Section
+export const ValidationRoadmapSchema = BaseSectionSchema.extend({
+  coreHypotheses: z.array(z.object({
+    hypothesis: z.string().min(1, "Hypothesis cannot be empty"),
+    priority: z.enum(['high', 'medium', 'low']),
+  })).min(1, "At least one core hypothesis is required"),
+  hypothesisExperiments: z.array(z.object({
+    hypothesis: z.string().min(1, "Associated hypothesis cannot be empty"),
+    experiment: z.string().min(1, "Experiment description cannot be empty"),
+    successMetric: z.string().min(1, "Success metric cannot be empty"),
+  })).min(1, "At least one experiment is required"),
+  validationTimeline: z.object({
+    days30: z.array(z.string().min(1, "Timeline goal cannot be empty")).describe("Goals for the first 30 days"),
+    days60: z.array(z.string().min(1, "Timeline goal cannot be empty")).describe("Goals for the next 30 days (31-60)"),
+    days90: z.array(z.string().min(1, "Timeline goal cannot be empty")).describe("Goals for the following 30 days (61-90)"),
+  }),
+}).strict();
+
+export type ValidationRoadmap = BaseSectionResponse & z.infer<typeof ValidationRoadmapSchema>;
+
+// Key Performance Indicators Section
+export const KeyPerformanceIndicatorsSchema = BaseSectionSchema.extend({
+  criticalMetrics: z.array(z.object({
+    metric: z.string().min(1, "Metric name cannot be empty"),
+    description: z.string().min(1, "Metric description cannot be empty"),
+    targetValue: z.string().describe("Target value or range"),
+    timeframe: z.string().describe("Timeframe to achieve the target"),
+  })).min(1, "At least one critical metric is required"),
+  measurementMethods: z.array(z.object({
+    metric: z.string().min(1, "Associated metric cannot be empty"),
+    tools: z.array(z.string()).describe("Specific tools for measurement"),
+    method: z.string().min(1, "Measurement method description cannot be empty"),
+  })).min(1, "At least one measurement method is required"),
+}).strict();
+
+export type KeyPerformanceIndicators = BaseSectionResponse & z.infer<typeof KeyPerformanceIndicatorsSchema>;
+
+// Experiment Design Section
+export const ExperimentDesignSchema = BaseSectionSchema.extend({
+  mvpPrototypes: z.array(z.object({
+    type: z.string().min(1, "MVP/Prototype type cannot be empty"),
+    description: z.string().min(1, "Description cannot be empty"),
+    assumptionsTested: z.array(z.string().min(1, "Assumption cannot be empty")).min(1, "Must test at least one assumption"),
+  })).min(1, "At least one MVP/Prototype is required"),
+  customerInterviewFramework: z.object({
+    purpose: z.string().min(1, "Purpose of interviews cannot be empty"),
+    keyQuestions: z.array(z.string().min(1, "Question cannot be empty")).min(1, "At least one key question is required"),
+  }),
+  abTestingRecommendations: z.array(z.object({
+    featureOrMessage: z.string().min(1, "Feature/Message cannot be empty"),
+    variants: z.array(z.string().min(1, "Variant cannot be empty")).min(2, "At least two variants needed for A/B test"),
+    successMetric: z.string().min(1, "Success metric cannot be empty"),
+  })),
+}).strict();
+
+export type ExperimentDesign = BaseSectionResponse & z.infer<typeof ExperimentDesignSchema>;
+
 // Critical Thought Questions Section
-export const CriticalThoughtQuestionsSchema = z.object({
+export const CriticalThoughtQuestionsSchema = BaseSectionSchema.extend({
   questions: z.array(z.object({
     category: z.string(),
-    questions: z.array(z.object({
-      question: z.string(),
-      importance: z.enum(['high', 'medium', 'low']),
-      context: z.string().optional(),
-    })),
-  })),
-});
+    question: z.string(),
+    analysis: z.string().describe("Detailed analysis of the question"),
+    priority: z.enum(['high', 'medium', 'low']),
+    implications: z.array(z.string()),
+    recommendations: z.array(ActionableItemSchema),
+  })).min(1, "At least one critical question area required"),
+  riskAssessment: z.object({
+      highPriority: z.array(z.string()),
+      mediumPriority: z.array(z.string()),
+      lowPriority: z.array(z.string()),
+  }),
+}).strict();
 
 export type CriticalThoughtQuestions = BaseSectionResponse & z.infer<typeof CriticalThoughtQuestionsSchema>;
 
@@ -311,15 +398,28 @@ export const VCSentimentSchema = z.object({
 export type VCSentiment = BaseSectionResponse & z.infer<typeof VCSentimentSchema>;
 
 // Report Summary Section
-export const ReportSummarySchema = z.object({
-  overallAssessment: z.string(),
-  keyRecommendations: z.array(z.string()),
-  nextSteps: z.array(z.string()),
-  riskLevel: z.enum(['High', 'Medium', 'Low']),
-  confidenceScore: z.number().min(0).max(100),
-});
+export const ReportSummarySchema = BaseSectionSchema.extend({
+  summary: z.string().min(1, "Summary is required"),
+  keyFindings: z.array(z.string().min(1, "Finding cannot be empty")).min(1, "At least one key finding is required"),
+  overallRecommendation: z.enum(['Proceed', 'Pivot', 'Halt']).describe("Overall recommendation based on the analysis"),
+  recommendations: z.array(z.object({
+      category: z.string(),
+      items: z.array(ActionableItemSchema),
+      priority: z.enum(['high', 'medium', 'low']),
+  })).min(1, "At least one recommendation category is required"),
+  nextSteps: z.array(ActionableItemSchema).min(1, "At least one next step is required"),
+}).strict();
 
 export type ReportSummary = BaseSectionResponse & z.infer<typeof ReportSummarySchema>;
+
+// Base schema for common section properties
+const SectionBaseSchema = z.object({
+  sectionId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  status: z.enum(['pending', 'completed', 'failed']),
+  error: z.string().optional(),
+});
 
 // User Input Schema
 export const UserInputSchema = z.object({
@@ -339,95 +439,39 @@ export type UserInput = z.infer<typeof UserInputSchema>;
 // Analysis Document Schema
 export const AnalysisDocumentSchema = z.object({
   userId: z.string(),
-  userInput: UserInputSchema,
-  sections: z.object({
-    executiveSummary: z.object({
-      ...ExecutiveSummarySchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    marketSizeGrowth: z.object({
-      ...MarketSizeGrowthSchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    targetUsers: z.object({
-      ...TargetUsersSchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    competition: z.object({
-      ...CompetitionSchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    unitEconomics: z.object({
-      ...UnitEconomicsSchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    marketingChannels: z.object({
-      ...MarketingChannelsSchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    goToMarketPlan: z.object({
-      ...GoToMarketPlanSchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    criticalThoughtQuestions: z.object({
-      ...CriticalThoughtQuestionsSchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    vcSentiment: z.object({
-      ...VCSentimentSchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-    reportSummary: z.object({
-      ...ReportSummarySchema.shape,
-      sectionId: z.string(),
-      createdAt: z.date(),
-      updatedAt: z.date(),
-      status: z.enum(['pending', 'completed', 'failed']),
-      error: z.string().optional(),
-    }).optional(),
-  }),
+  analysisId: z.string().uuid(),
+  status: z.enum(['pending', 'processing', 'completed', 'failed']),
   createdAt: z.date(),
   updatedAt: z.date(),
-  status: z.enum(['pending', 'in_progress', 'completed', 'failed']),
+  formData: z.any().optional(),
+  sections: z.object({
+    executiveSummary: z.optional(z.union([ExecutiveSummarySchema, BaseSectionSchema])),
+    marketSizeGrowth: z.optional(z.union([MarketSizeGrowthSchema, BaseSectionSchema])),
+    targetUsers: z.optional(z.union([TargetUsersSchema, BaseSectionSchema])),
+    competition: z.optional(z.union([CompetitionSchema, BaseSectionSchema])),
+    unitEconomics: z.optional(z.union([UnitEconomicsSchema, BaseSectionSchema])),
+    marketingChannels: z.optional(z.union([MarketingChannelsSchema, BaseSectionSchema])),
+    goToMarketPlan: z.optional(z.union([GoToMarketPlanSchema, BaseSectionSchema])),
+    vcSentiment: z.optional(z.union([VCSentimentSchema, BaseSectionSchema])),
+    criticalThoughtQuestions: z.optional(z.union([CriticalThoughtQuestionsSchema, BaseSectionSchema])),
+    reportSummary: z.optional(z.union([ReportSummarySchema, BaseSectionSchema])),
+    validationRoadmap: z.optional(z.union([ValidationRoadmapSchema, BaseSectionSchema])),
+    keyPerformanceIndicators: z.optional(z.union([KeyPerformanceIndicatorsSchema, BaseSectionSchema])),
+    experimentDesign: z.optional(z.union([ExperimentDesignSchema, BaseSectionSchema])),
+  }),
+  error: z.string().optional(),
 });
 
 export type AnalysisDocument = z.infer<typeof AnalysisDocumentSchema>;
+
+// Type for the status of a specific section
+export type SectionStatus = z.infer<typeof SectionBaseSchema.shape.status>;
+
+// Type for the status of the entire analysis document
+export type AnalysisStatus = z.infer<typeof AnalysisDocumentSchema.shape.status>;
+
+// Type mapping section keys to their schemas
+// ... existing code ...
 
 export interface AIModel {
   id: string;

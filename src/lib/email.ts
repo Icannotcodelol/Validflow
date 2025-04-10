@@ -1,6 +1,19 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Declare resend but initialize lazily
+let resend: Resend | null = null;
+
+// Helper function to get/initialize the client
+function getResendClient(): Resend {
+  if (!resend) {
+    if (!process.env.RESEND_API_KEY) {
+      // Throw a more informative error at runtime if the key is still missing
+      throw new Error('RESEND_API_KEY environment variable is not set.');
+    }
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 type EmailTemplateProps = {
   customerName: string;
@@ -20,6 +33,7 @@ export async function sendPurchaseConfirmation({
   isSubscription
 }: EmailTemplateProps) {
   try {
+    const client = getResendClient(); // Get client instance
     const subject = isSubscription 
       ? 'Your ValiNow Unlimited Subscription is Active!'
       : 'Your ValiNow Credits Purchase Confirmation';
@@ -52,7 +66,7 @@ export async function sendPurchaseConfirmation({
         <p>Best regards,<br>The ValiNow Team</p>
       `;
 
-    await resend.emails.send({
+    await client.emails.send({
       from: 'ValiNow <onboarding@resend.dev>',
       to: [customerEmail],
       subject: subject,
@@ -68,7 +82,8 @@ export async function sendSubscriptionCancelledEmail({
   customerEmail
 }: EmailTemplateProps) {
   try {
-    await resend.emails.send({
+    const client = getResendClient(); // Get client instance
+    await client.emails.send({
       from: 'ValiNow <onboarding@resend.dev>',
       to: [customerEmail],
       subject: 'Your ValiNow Subscription Has Been Cancelled',
@@ -91,7 +106,8 @@ export async function sendPaymentFailedEmail({
   customerEmail
 }: EmailTemplateProps) {
   try {
-    await resend.emails.send({
+    const client = getResendClient(); // Get client instance
+    await client.emails.send({
       from: 'ValiNow <onboarding@resend.dev>',
       to: [customerEmail],
       subject: 'Action Required: Payment Failed for ValiNow Subscription',

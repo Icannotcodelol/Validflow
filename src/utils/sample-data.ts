@@ -125,7 +125,13 @@ export const sampleAnalysisResult: AnalysisResult = {
         costStructure: {
           fixed: ["Technology infrastructure", "Marketing"],
           variable: ["Customer support", "Provider verification"],
-          unitEconomics: "Positive unit economics after 6 months"
+          unitEconomics: {
+            cac: "$150",
+            ltv: "$1200",
+            margin: "70%",
+            paybackPeriod: "6 months",
+            breakEvenPoint: "1500 users"
+          }
         },
         projections: {
           year1: "$5M revenue",
@@ -196,48 +202,70 @@ export const sampleAnalysisResult: AnalysisResult = {
       questions: [
         {
           category: "Market Validation",
-          questions: [
-            {
-              question: "How does the solution address the core pain points of the target market?",
-              importance: "high",
-              context: "Understanding the alignment between solution and market needs"
-            },
-            {
-              question: "What evidence supports the market size and growth projections?",
-              importance: "high",
-              context: "Validating market opportunity assumptions"
-            }
-          ]
+          question: "How does the solution address the core pain points of the target market?",
+          priority: "high",
+          analysis: "Placeholder analysis for market validation question 1.",
+          implications: ["Placeholder implication 1"],
+          recommendations: ["Placeholder recommendation 1"]
+        },
+        {
+          category: "Market Validation",
+          question: "What evidence supports the market size and growth projections?",
+          priority: "high",
+          analysis: "Placeholder analysis for market validation question 2.",
+          implications: ["Placeholder implication 2"],
+          recommendations: ["Placeholder recommendation 2"]
         },
         {
           category: "Competitive Analysis",
-          questions: [
-            {
-              question: "What are the key differentiators from existing solutions?",
-              importance: "high",
-              context: "Understanding unique value proposition"
-            },
-            {
-              question: "How sustainable are these competitive advantages?",
-              importance: "medium",
-              context: "Evaluating long-term defensibility"
-            }
-          ]
+          question: "What are the key differentiators from existing solutions?",
+          priority: "high",
+          analysis: "Placeholder analysis for competitive analysis question 1.",
+          implications: ["Placeholder implication 3"],
+          recommendations: ["Placeholder recommendation 3"]
+        },
+        {
+          category: "Competitive Analysis",
+          question: "How sustainable are these competitive advantages?",
+          priority: "medium",
+          analysis: "Placeholder analysis for competitive analysis question 2.",
+          implications: ["Placeholder implication 4"],
+          recommendations: ["Placeholder recommendation 4"]
         },
         {
           category: "Business Model",
-          questions: [
-            {
-              question: "How scalable is the revenue model?",
-              importance: "high",
-              context: "Assessing growth potential and unit economics"
-            },
-            {
-              question: "What are the key assumptions in the financial projections?",
-              importance: "medium",
-              context: "Validating financial planning"
-            }
-          ]
+          question: "How scalable is the revenue model?",
+          priority: "high",
+          analysis: "Placeholder analysis for business model question 1.",
+          implications: ["Placeholder implication 5"],
+          recommendations: ["Placeholder recommendation 5"]
+        },
+        {
+          category: "Business Model",
+          question: "What are the key assumptions in the financial projections?",
+          priority: "medium",
+          analysis: "Placeholder analysis for business model question 2.",
+          implications: ["Placeholder implication 6"],
+          recommendations: ["Placeholder recommendation 6"]
+        }
+      ],
+      riskAssessment: {
+        highPriority: ["Placeholder high priority risk 1"],
+        mediumPriority: ["Placeholder medium priority risk 1"],
+        lowPriority: ["Placeholder low priority risk 1"]
+      },
+      actionItems: [
+        {
+          item: "Placeholder action item 1.",
+          priority: "high",
+          timeline: "Q1",
+          owner: "CEO"
+        },
+        {
+          item: "Placeholder action item 2.",
+          priority: "medium",
+          timeline: "Q2",
+          owner: "CTO"
         }
       ]
     }

@@ -1,13 +1,11 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Info } from "lucide-react";
-import type { MarketSizeGrowthData } from "@/types/sections";
+import type { MarketSizeGrowth as MarketSizeGrowthData, BaseSectionResponse } from "@/lib/ai/models";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-interface MarketSizeGrowthProps {
-  data?: MarketSizeGrowthData;
-  status: 'pending' | 'completed' | 'failed';
-  error?: string;
+interface MarketSizeGrowthProps extends BaseSectionResponse {
+  data?: MarketSizeGrowthData['data'];
 }
 
 function MarketSizeGrowthContent({ data, status, error }: MarketSizeGrowthProps) {
@@ -47,8 +45,8 @@ function MarketSizeGrowthContent({ data, status, error }: MarketSizeGrowthProps)
     );
   }
 
-  if (status === 'completed' && (!data || !data.marketSize)) {
-    console.warn('[MarketSizeGrowth] Completed status but missing data or marketSize.', data);
+  if (status === 'completed' && (!data || !data.totalAddressableMarket || !data.growthRate)) {
+    console.warn('[MarketSizeGrowth] Completed status but missing essential data fields (TAM, GrowthRate).', data);
     return (
       <Card>
         <CardHeader>
@@ -58,7 +56,7 @@ function MarketSizeGrowthContent({ data, status, error }: MarketSizeGrowthProps)
           <Alert variant="default">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              {error ? `Error: ${error}` : 'Market size data is unavailable or the structure is incorrect.'}
+              {error ? `Error: ${error}` : 'Market size data is incomplete or the structure is incorrect.'}
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -66,8 +64,20 @@ function MarketSizeGrowthContent({ data, status, error }: MarketSizeGrowthProps)
     );
   }
 
-  if (status === 'completed' && data && data.marketSize) {
-    const { marketSize } = data;
+  if (status === 'completed' && data) {
+    const { 
+      totalAddressableMarket,
+      serviceableAddressableMarket,
+      serviceableObtainableMarket,
+      growthRate,
+      marketTrends,
+      marketDrivers,
+      marketChallenges
+    } = data;
+
+    const displayRate = growthRate?.current || growthRate?.projected || "N/A";
+    const displayDrivers = growthRate?.factors?.join('; ') || "No specific drivers listed.";
+    
     return (
       <Card>
         <CardHeader>
@@ -77,45 +87,62 @@ function MarketSizeGrowthContent({ data, status, error }: MarketSizeGrowthProps)
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="p-4 bg-muted rounded-lg">
-                <h3 className="font-medium mb-2">Total Market Size</h3>
-                <p className="text-2xl font-bold text-primary mb-1">{marketSize.total}</p>
-                <p className="text-sm text-muted-foreground">{marketSize.analysis}</p>
+                <h3 className="font-medium mb-2">Total Market Size (TAM)</h3>
+                {totalAddressableMarket?.size && 
+                  <p className="text-lg font-semibold text-primary mb-1">{totalAddressableMarket.size}</p>
+                }
+                {totalAddressableMarket?.description && 
+                   <p className="text-sm text-muted-foreground">{totalAddressableMarket.description}</p>
+                }
               </div>
               <div className="p-4 bg-muted rounded-lg">
-                <h3 className="font-medium mb-2">Growth Rate</h3>
-                <p className="text-2xl font-bold text-primary mb-1">{marketSize.growth}</p>
-                <p className="text-sm text-muted-foreground">Annual growth rate</p>
+                <h3 className="font-medium mb-2">Growth Rate & Drivers</h3>
+                <p className="text-2xl font-bold text-primary mb-2">{displayRate}</p>
+                <p className="text-sm text-muted-foreground">{displayDrivers}</p>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-medium mb-2">Market Breakdown</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                    <span>Serviceable Addressable Market (SAM)</span>
-                    <span className="font-medium">{marketSize.addressable}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                    <span>Serviceable Obtainable Market (SOM)</span>
-                    <span className="font-medium">{marketSize.obtainable}</span>
-                  </div>
+            <div>
+              <h3 className="font-semibold mb-3 text-lg">Market Breakdown</h3>
+              <div className="grid gap-4 md:grid-cols-1">
+                <div className="p-4 bg-muted rounded-lg border">
+                  <h4 className="font-medium mb-1 text-base">Serviceable Addressable Market (SAM)</h4>
+                  {serviceableAddressableMarket?.size && 
+                    <p className="text-md font-semibold text-primary mb-2">{serviceableAddressableMarket.size}</p>
+                  }
+                  {serviceableAddressableMarket?.description && 
+                    <p className="text-sm text-muted-foreground mb-2">{serviceableAddressableMarket.description}</p>
+                  }
+                  {serviceableAddressableMarket?.limitations && serviceableAddressableMarket.limitations.length > 0 && (
+                     <div>
+                        <p className="text-xs font-medium text-muted-foreground">Limitations:</p>
+                        <ul className="list-disc list-inside text-xs text-muted-foreground">
+                          {serviceableAddressableMarket.limitations.map((limitation: string, i: number) => <li key={i}>{limitation}</li>)}
+                        </ul>
+                     </div>
+                  )}
+                </div>
+                <div className="p-4 bg-muted rounded-lg border">
+                  <h4 className="font-medium mb-1 text-base">Serviceable Obtainable Market (SOM)</h4>
+                   {serviceableObtainableMarket?.size && 
+                    <p className="text-md font-semibold text-primary mb-2">{serviceableObtainableMarket.size}</p>
+                  }
+                  {serviceableObtainableMarket?.description && 
+                    <p className="text-sm text-muted-foreground mb-2">{serviceableObtainableMarket.description}</p>
+                  }
+                  {serviceableObtainableMarket?.timeframe && 
+                    <p className="text-xs text-muted-foreground mb-2">Timeframe: {serviceableObtainableMarket.timeframe}</p>
+                  }
+                   {serviceableObtainableMarket?.assumptions && serviceableObtainableMarket.assumptions.length > 0 && (
+                     <div>
+                        <p className="text-xs font-medium text-muted-foreground">Assumptions:</p>
+                        <ul className="list-disc list-inside text-xs text-muted-foreground">
+                          {serviceableObtainableMarket.assumptions.map((assumption: string, i: number) => <li key={i}>{assumption}</li>)}
+                        </ul>
+                     </div>
+                  )}
                 </div>
               </div>
-
-              {marketSize.projections && marketSize.projections.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-2">Growth Projections</h3>
-                  <div className="space-y-2">
-                    {marketSize.projections.map((projection, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                        <span>{projection.year}</span>
-                        <span className="font-medium">{projection.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </CardContent>

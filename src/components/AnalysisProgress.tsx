@@ -13,6 +13,9 @@ const SECTION_LABELS: Record<string, string> = {
   goToMarketPlan: "Go-to-Market Plan",
   vcSentiment: "VC Sentiment",
   criticalThoughtQuestions: "Critical Questions",
+  validationRoadmap: "Validation Roadmap",
+  keyPerformanceIndicators: "Key Performance Indicators",
+  experimentDesign: "Experiment Design",
   reportSummary: "Report Summary",
 };
 

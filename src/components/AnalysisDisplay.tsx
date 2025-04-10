@@ -9,6 +9,9 @@ import { GoToMarketPlan } from "./sections/GoToMarketPlan";
 import { CriticalThoughtQuestions } from "./sections/CriticalThoughtQuestions";
 import { VCSentiment } from "./sections/VCSentiment";
 import { ReportSummary } from "./sections/ReportSummary";
+import { ValidationRoadmap } from "./sections/ValidationRoadmap";
+import { KeyPerformanceIndicators } from "./sections/KeyPerformanceIndicators";
+import { ExperimentDesign } from "./sections/ExperimentDesign";
 import { AnalysisProgress } from "./AnalysisProgress";
 import { Download } from "lucide-react";
 import { Button } from "./ui/button";
@@ -23,9 +26,8 @@ interface AnalysisDisplayProps {
   hideProgress?: boolean;
 }
 
-export function AnalysisDisplay({ analysis, isLoading, error, hideProgress }: AnalysisDisplayProps) {
+export function AnalysisDisplay({ analysis, isLoading, error, /* hideProgress */ }: AnalysisDisplayProps) {
   console.log('[AnalysisDisplay] Rendering with analysis:', {
-    id: analysis.id,
     status: analysis.status,
     sections: Object.keys(analysis.sections as Record<string, BaseSectionResponse>),
     completedSections: Object.entries(analysis.sections as Record<string, BaseSectionResponse>)
@@ -65,6 +67,9 @@ export function AnalysisDisplay({ analysis, isLoading, error, hideProgress }: An
       unitEconomics: UnitEconomics,
       marketingChannels: MarketingChannels,
       goToMarketPlan: GoToMarketPlan,
+      validationRoadmap: ValidationRoadmap,
+      keyPerformanceIndicators: KeyPerformanceIndicators,
+      experimentDesign: ExperimentDesign,
       vcSentiment: VCSentiment,
       criticalThoughtQuestions: CriticalThoughtQuestions,
       reportSummary: ReportSummary,
@@ -79,9 +84,7 @@ export function AnalysisDisplay({ analysis, isLoading, error, hideProgress }: An
       return (
         <SectionComponent
           key={key}
-          status={section.status}
-          error={section.error}
-          data={section.data}
+          {...section}
           isLandingPage={false}
         />
       );
@@ -90,17 +93,17 @@ export function AnalysisDisplay({ analysis, isLoading, error, hideProgress }: An
     return (
       <SectionComponent
         key={key}
-        status={section.status}
-        error={section.error}
-        data={section.data}
+        {...section}
       />
     );
   };
 
   return (
     <div className="space-y-8">
+      {/* Comment out or remove the entire progress section */}
+      {/* 
       {!hideProgress && (
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-6 p-4 bg-card border rounded-lg shadow-sm">
           <AnalysisProgress analysis={analysis} />
           
           <DropdownMenu>
@@ -124,7 +127,9 @@ export function AnalysisDisplay({ analysis, isLoading, error, hideProgress }: An
           </DropdownMenu>
         </div>
       )}
+      */}
       
+      {/* Analysis Sections Rendering */}
       <div className="space-y-8">
         {[
           'executiveSummary',

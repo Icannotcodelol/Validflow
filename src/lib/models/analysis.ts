@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb';
+// import { ObjectId } from 'mongodb'; // Removed unused import
 
 export interface BaseSectionResponse {
   status: 'completed' | 'failed' | 'pending';
@@ -303,7 +303,7 @@ export interface MarketResearch extends BaseSectionResponse {
 }
 
 export interface Analysis {
-  _id?: string | ObjectId;
+  _id?: string;
   userId: string;
   createdAt: Date;
   updatedAt: Date;

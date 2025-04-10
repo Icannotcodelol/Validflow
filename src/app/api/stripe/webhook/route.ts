@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { sendPurchaseConfirmation, sendSubscriptionCancelledEmail, sendPaymentFailedEmail } from '@/lib/email';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16' as any,
@@ -15,15 +16,12 @@ function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
 
-async function updateUserCredits(userId: string, credits: number) {
-  const supabase = createClient();
-  // Note: Ensure 'add_user_credits' RPC exists and works as expected
+async function updateUserCredits(supabase: SupabaseClient, userId: string, credits: number) {
   const { error } = await supabase.rpc('add_user_credits', { user_id: userId, credits_to_add: credits });
   if (error) console.error(`Error calling add_user_credits RPC for user ${userId}:`, error);
 }
 
-async function updateUserSubscription(userId: string, endDate: Date | null) {
-  const supabase = createClient();
+async function updateUserSubscription(supabase: SupabaseClient, userId: string, endDate: Date | null) {
   const { error } = await supabase.from('user_credits').update({
     has_unlimited: endDate !== null,
     unlimited_until: endDate ? endDate.toISOString() : null,
@@ -77,7 +75,7 @@ export async function POST(req: Request) {
         if (paymentIntent.metadata?.type === 'credits' && isString(userId) && isString(creditsStr)) {
           const credits = parseInt(creditsStr);
           if (!isNaN(credits)) {
-            await updateUserCredits(userId, credits);
+            await updateUserCredits(supabase, userId, credits);
           }
         }
         break;
@@ -120,7 +118,7 @@ export async function POST(req: Request) {
 
         // Ensure userId is string and currentPeriodEnd is number before using
         if (isString(userId) && typeof currentPeriodEnd === 'number') {
-          await updateUserSubscription(userId, new Date(currentPeriodEnd * 1000));
+          await updateUserSubscription(supabase, userId, new Date(currentPeriodEnd * 1000));
         }
 
         break;
@@ -130,8 +128,8 @@ export async function POST(req: Request) {
         const subscription = event.data.object as any;
         const userId = subscription.metadata?.userId;
         if (isString(userId)) {
-          // Set subscription end date to null
-          await updateUserSubscription(userId, null);
+          // Pass client instance to helper
+          await updateUserSubscription(supabase, userId, null);
           // Optionally send cancellation email
           // const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer;
           // if (customer.email) { await sendSubscriptionCancelledEmail({ customerEmail: customer.email }); }
@@ -214,7 +212,7 @@ export async function POST(req: Request) {
 
         if (isString(userId) && typeof currentPeriodEnd === 'number') {
           // Update Supabase user_credits table
-          await updateUserSubscription(userId, new Date(currentPeriodEnd * 1000));
+          await updateUserSubscription(supabase, userId, new Date(currentPeriodEnd * 1000));
 
           // Send confirmation email ONLY on creation (or maybe first payment success via invoice.paid?)
           if (event.type === 'customer.subscription.created') {

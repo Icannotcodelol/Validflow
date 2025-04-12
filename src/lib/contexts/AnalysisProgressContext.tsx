@@ -20,17 +20,11 @@ export function AnalysisProgressProvider({
   const [progress, setProgress] = useState<Record<string, 'pending' | 'completed' | 'failed'>>({});
 
   useEffect(() => {
+    // Initialize progress from analysis sections
     const initialProgress: Record<string, 'pending' | 'completed' | 'failed'> = {};
-    // Iterate over the sections and safely access status
     Object.entries(analysis.sections).forEach(([key, section]) => {
-      // Check if section exists and has a status property before accessing it
-      if (section && typeof section === 'object' && 'status' in section) {
-         // Assert the type for status, as it should be one of the expected values if it exists
-        initialProgress[key] = section.status as 'pending' | 'completed' | 'failed';
-      } else if (section) {
-         // If section exists but status doesn't (unlikely with BaseSectionSchema), default to pending or handle as needed
-         console.warn(`Section ${key} exists but missing status property.`, section);
-         initialProgress[key] = 'pending'; 
+      if (section) {
+        initialProgress[key] = section.status;
       }
     });
     setProgress(initialProgress);

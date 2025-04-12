@@ -123,7 +123,7 @@ export default function ValidatePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userCredits, setUserCredits] = useState<{
-    credits: number;
+    credits_balance: number;
     has_unlimited: boolean;
     unlimited_until: string | null;
     free_analysis_used: boolean;
@@ -149,7 +149,7 @@ export default function ValidatePage() {
         // Fetch user credits
         const { data: credits, error: creditsError } = await supabase
           .from('user_credits')
-          .select('credits, has_unlimited, unlimited_until, free_analysis_used')
+          .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
           .eq('user_id', session.user.id)
           .single();
 
@@ -159,7 +159,7 @@ export default function ValidatePage() {
             .from('user_credits')
             .insert({
               user_id: session.user.id,
-              credits: 0,
+              credits_balance: 0,
               has_unlimited: false,
               free_analysis_used: false
             })
@@ -300,10 +300,10 @@ export default function ValidatePage() {
                   </span>
                 ) : (
                   <span>
-                    {userCredits.credits === 0 && !userCredits.free_analysis_used ? (
+                    {userCredits.credits_balance === 0 && !userCredits.free_analysis_used ? (
                       <span className="text-blue-600">Free Analysis Available</span>
                     ) : (
-                      <span>Credits Remaining: <span className="font-medium">{userCredits.credits}</span></span>
+                      <span>Credits Remaining: <span className="font-medium">{userCredits.credits_balance}</span></span>
                     )}
                   </span>
                 )}

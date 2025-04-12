@@ -169,44 +169,55 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <div className="flex-1 bg-[url('/mountains.jpg')] bg-cover bg-center">
-        <div className="h-full w-full bg-black/50 pt-16">
-          <div className="container mx-auto px-4 py-32">
-            <div className="max-w-3xl">
-              <h1 className="text-6xl font-bold text-white mb-6">
-                ValidFlow
-              </h1>
-              <h2 className="text-4xl font-bold text-pink-400 mb-8">
-                AI-powered analysis to evaluate your product concept
-              </h2>
-              <p className="text-xl text-white mb-12">
-                AI-powered analysis to evaluate your product concept,
-                highlight strengths, weaknesses, and market opportunities
-                before you invest time and resources.
-              </p>
-              <div className="flex gap-4">
-                <Button
-                  size="lg"
-                  onClick={handleTryValidFlow}
-                  className="text-lg px-8"
-                >
-                  {user ? 'Try ValidFlow' : 'Get Started'}
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => router.push('/pricing')}
-                  className="text-lg px-8 text-white border-white hover:bg-white/10"
-                >
-                  View Pricing
-                </Button>
-              </div>
+      <main className="flex-1 relative">
+        {/* Background image with overlay */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center z-0"
+          style={{ 
+            backgroundImage: "url('/mountains.jpg')",
+            backgroundPosition: "center",
+            backgroundSize: "cover"
+          }}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 container mx-auto px-4 pt-32 pb-20 min-h-screen flex items-center">
+          <div className="max-w-3xl">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6">
+              ValidFlow
+            </h1>
+            <h2 className="text-3xl md:text-4xl font-bold text-pink-400 mb-8">
+              AI-powered product validation
+            </h2>
+            <p className="text-lg md:text-xl text-white/90 mb-12 max-w-2xl">
+              Get instant, comprehensive analysis of your product concept. 
+              Identify strengths, weaknesses, and market opportunities 
+              before investing time and resources.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                size="lg"
+                onClick={handleTryValidFlow}
+                className="text-lg px-8 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {user ? 'Try ValidFlow' : 'Get Started'}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => router.push('/pricing')}
+                className="text-lg px-8 border-2 border-white text-white hover:bg-white/10"
+              >
+                View Pricing
+              </Button>
             </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   )
 } 

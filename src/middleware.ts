@@ -8,23 +8,32 @@ const publicRoutes = ['/', '/signin', '/signup', '/auth/callback', '/pricing', '
 
 export async function middleware(req: NextRequest) {
   try {
+    console.log('[Middleware] Processing request for path:', req.nextUrl.pathname)
+    
     // Create a response early
     const res = NextResponse.next()
 
     // Create the Supabase client
     const supabase = createMiddlewareClient<Database>({ req, res })
 
-    // Always refresh the session if it exists
-    await supabase.auth.getSession()
+    // Get the session
+    const { data: { session }, error } = await supabase.auth.getSession()
+    
+    if (error) {
+      console.error('[Middleware] Error getting session:', error)
+      // Don't redirect on error, let the application handle it
+      return res
+    }
 
     const path = req.nextUrl.pathname
     const isPublicRoute = publicRoutes.includes(path)
 
-    // Get the session after refreshing
-    const { data: { session } } = await supabase.auth.getSession()
+    console.log('[Middleware] Session status:', !!session)
+    console.log('[Middleware] Is public route:', isPublicRoute)
 
     // If the route is not public and there's no session, redirect to signin
     if (!isPublicRoute && !session) {
+      console.log('[Middleware] Redirecting to signin')
       const redirectUrl = req.nextUrl.clone()
       redirectUrl.pathname = '/signin'
       redirectUrl.searchParams.set('redirectTo', path)
@@ -33,6 +42,7 @@ export async function middleware(req: NextRequest) {
 
     // If we have a session and we're on an auth page, redirect to validate
     if (session && (path === '/signin' || path === '/signup')) {
+      console.log('[Middleware] Redirecting authenticated user to validate')
       const redirectUrl = req.nextUrl.clone()
       redirectUrl.pathname = '/validate'
       return NextResponse.redirect(redirectUrl)
@@ -53,7 +63,8 @@ export async function middleware(req: NextRequest) {
 
     return res
   } catch (error) {
-    console.error('Middleware error:', error)
+    console.error('[Middleware] Error:', error)
+    // On error, let the request continue
     return NextResponse.next()
   }
 }

@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/signup",
+      "destination": "/auth/signup",
+      "permanent": true
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_BASE_URL": "https://validflow.io",
+    "NODE_ENV": "production"
+  }
+} 

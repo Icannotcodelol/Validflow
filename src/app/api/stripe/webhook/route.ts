@@ -20,6 +20,14 @@ function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
 
+// Helper function to safely get timestamp from Stripe Unix timestamps
+const getDateFromUnixTimestamp = (timestamp: number) => new Date(timestamp * 1000).toISOString();
+
+// Type guard for Stripe Subscription
+function isSubscription(obj: any): obj is Stripe.Subscription {
+  return obj && typeof obj === 'object' && 'current_period_end' in obj;
+}
+
 async function updateUserCredits(supabase: SupabaseClient, userId: string, credits: number) {
   const { error } = await supabase.rpc('add_user_credits', { user_id: userId, credits_to_add: credits });
   if (error) console.error(`Error calling add_user_credits RPC for user ${userId}:`, error);
@@ -50,7 +58,7 @@ export async function POST(req: Request) {
       body,
       signature,
       webhookSecret
-    ) as Stripe.DiscriminatedEvent;
+    ) as Stripe.Event;
 
     console.log('Processing webhook event:', event.type);
 
@@ -58,7 +66,7 @@ export async function POST(req: Request) {
 
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object;
+        const session = event.data.object as Stripe.Checkout.Session;
         
         if (!session.metadata?.userId) {
           throw new Error('No userId in session metadata');
@@ -73,14 +81,16 @@ export async function POST(req: Request) {
           console.log(`Added ${credits} credits for user ${session.metadata.userId}`);
         } 
         else if (session.metadata.type === 'unlimited' && session.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-          await supabase.from('user_credits').upsert({
-            user_id: session.metadata.userId,
-            has_unlimited: true,
-            unlimited_until: new Date(subscription.current_period_end * 1000).toISOString(),
-            subscription_id: subscription.id
-          });
-          console.log(`Activated unlimited subscription for user ${session.metadata.userId}`);
+          const subscriptionData = await stripe.subscriptions.retrieve(session.subscription as string);
+          if (isSubscription(subscriptionData)) {
+            await supabase.from('user_credits').upsert({
+              user_id: session.metadata.userId,
+              has_unlimited: true,
+              unlimited_until: getDateFromUnixTimestamp(subscriptionData.current_period_end),
+              subscription_id: subscriptionData.id
+            });
+            console.log(`Activated unlimited subscription for user ${session.metadata.userId}`);
+          }
         }
         break;
       }
@@ -88,69 +98,69 @@ export async function POST(req: Request) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object;
-        if (!subscription.metadata?.userId) {
-          throw new Error('No userId in subscription metadata');
+        if (isSubscription(subscription) && subscription.metadata?.userId) {
+          await supabase.from('user_credits').upsert({
+            user_id: subscription.metadata.userId,
+            has_unlimited: true,
+            unlimited_until: getDateFromUnixTimestamp(subscription.current_period_end),
+            subscription_id: subscription.id
+          });
+          console.log(`Updated subscription for user ${subscription.metadata.userId}`);
         }
-
-        await supabase.from('user_credits').upsert({
-          user_id: subscription.metadata.userId,
-          has_unlimited: true,
-          unlimited_until: new Date(subscription.current_period_end * 1000).toISOString(),
-          subscription_id: subscription.id
-        });
-        console.log(`Updated subscription for user ${subscription.metadata.userId}`);
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
-        if (!subscription.metadata?.userId) {
-          throw new Error('No userId in subscription metadata');
+        if (isSubscription(subscription) && subscription.metadata?.userId) {
+          await supabase.rpc('remove_unlimited_access', {
+            p_user_id: subscription.metadata.userId
+          });
+          console.log(`Removed unlimited access for user ${subscription.metadata.userId}`);
         }
-
-        await supabase.rpc('remove_unlimited_access', {
-          p_user_id: subscription.metadata.userId
-        });
-        console.log(`Removed unlimited access for user ${subscription.metadata.userId}`);
         break;
       }
 
       case 'invoice.paid': {
-        const invoice = event.data.object;
-        if (typeof invoice.subscription === 'string') {
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
-          if (!subscription.metadata?.userId) {
-            throw new Error('No userId in subscription metadata');
+        const invoice = event.data.object as Stripe.Invoice;
+        if (invoice.subscription) {
+          const subscriptionId = typeof invoice.subscription === 'string' 
+            ? invoice.subscription 
+            : invoice.subscription.id;
+            
+          const subscriptionData = await stripe.subscriptions.retrieve(subscriptionId);
+          if (isSubscription(subscriptionData) && subscriptionData.metadata?.userId) {
+            await supabase.from('user_credits').upsert({
+              user_id: subscriptionData.metadata.userId,
+              has_unlimited: true,
+              unlimited_until: getDateFromUnixTimestamp(subscriptionData.current_period_end),
+              subscription_id: subscriptionData.id
+            });
+            console.log(`Updated subscription after payment for user ${subscriptionData.metadata.userId}`);
           }
-
-          await supabase.from('user_credits').upsert({
-            user_id: subscription.metadata.userId,
-            has_unlimited: true,
-            unlimited_until: new Date(subscription.current_period_end * 1000).toISOString(),
-            subscription_id: subscription.id
-          });
-          console.log(`Updated subscription after payment for user ${subscription.metadata.userId}`);
         }
         break;
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object;
-        if (typeof invoice.subscription === 'string') {
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
-          console.log(`Payment failed for subscription ${subscription.id}, user ${subscription.metadata?.userId}`);
-          // Here you might want to add notification logic
+        const invoice = event.data.object as Stripe.Invoice;
+        if (invoice.subscription) {
+          const subscriptionId = typeof invoice.subscription === 'string' 
+            ? invoice.subscription 
+            : invoice.subscription.id;
+            
+          const subscriptionData = await stripe.subscriptions.retrieve(subscriptionId);
+          if (isSubscription(subscriptionData)) {
+            console.log(`Payment failed for subscription ${subscriptionData.id}, user ${subscriptionData.metadata?.userId}`);
+          }
         }
         break;
       }
 
       case 'customer.subscription.trial_will_end': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata?.userId;
-        
-        if (userId) {
-          // You might want to notify the user that their trial is ending
-          console.log('Trial ending soon for subscription:', subscription.id, 'user:', userId);
+        const subscription = event.data.object;
+        if (isSubscription(subscription) && subscription.metadata?.userId) {
+          console.log('Trial ending soon for subscription:', subscription.id, 'user:', subscription.metadata.userId);
         }
         break;
       }

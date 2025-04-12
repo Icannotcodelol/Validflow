@@ -23,8 +23,8 @@ export function AnalysisProgressProvider({
     // Initialize progress from analysis sections
     const initialProgress: Record<string, 'pending' | 'completed' | 'failed'> = {};
     Object.entries(analysis.sections).forEach(([key, section]) => {
-      if (section) {
-        initialProgress[key] = section.status;
+      if (section && 'status' in section && typeof section.status === 'string') {
+        initialProgress[key] = section.status as 'pending' | 'completed' | 'failed';
       }
     });
     setProgress(initialProgress);

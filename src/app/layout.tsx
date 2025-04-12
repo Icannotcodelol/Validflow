@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import SupabaseProvider from "@/components/providers/SessionProvider"
-import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,7 +25,6 @@ export default function RootLayout({
         <SupabaseProvider>
           <div className="min-h-screen bg-background">
             {children}
-            <Toaster />
           </div>
         </SupabaseProvider>
       </body>

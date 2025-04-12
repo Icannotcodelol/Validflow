@@ -14,11 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { User } from '@supabase/supabase-js';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useSession } from "next-auth/react";
-import { toast } from "@/components/ui/use-toast";
 
 const industryOptions = [
   { value: "technology", label: "Technology" },
@@ -120,26 +115,9 @@ const teamCompositionOptions = [
   { value: "research-team", label: "Research/Academic Team" }
 ];
 
-const formSchema = z.object({
-  productDescription: z.string().min(10, "Product description must be at least 10 characters"),
-  industry: z.string({ required_error: "Please select an industry" }),
-  subIndustry: z.string({ required_error: "Please select a sub-industry" }),
-  targetCustomers: z.string({ required_error: "Please select target customers" }),
-  pricingModel: z.string({ required_error: "Please select a pricing model" }),
-  currentStage: z.string({ required_error: "Please select current stage" }),
-  teamComposition: z.string({ required_error: "Please select team composition" }),
-  additionalInfo: z.string().optional(),
-});
-
-type FormData = z.infer<typeof formSchema>;
-
-type FormFields = "productDescription" | "industry" | "subIndustry" | "targetCustomers" | 
-                 "pricingModel" | "currentStage" | "teamComposition" | "additionalInfo";
-
 export default function ValidatePage() {
   const router = useRouter();
   const supabase = useSupabase();
-  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -150,21 +128,15 @@ export default function ValidatePage() {
     unlimited_until: string | null;
     free_analysis_used: boolean;
   } | null>(null);
-  const [credits, setCredits] = useState<number | null>(null);
-  const [hasUnlimitedAccess, setHasUnlimitedAccess] = useState(false);
-
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      productDescription: "",
-      industry: "",
-      subIndustry: "",
-      targetCustomers: "",
-      pricingModel: "",
-      currentStage: "",
-      teamComposition: "",
-      additionalInfo: "",
-    },
+  const [formData, setFormData] = useState({
+    description: "",
+    industry: "",
+    subIndustry: "",
+    targetCustomers: "",
+    pricingModel: "",
+    currentStage: "",
+    teamComposition: "",
+    additionalInfo: "",
   });
 
   useEffect(() => {
@@ -250,27 +222,6 @@ export default function ValidatePage() {
     checkUser();
   }, [supabase, router]);
 
-  useEffect(() => {
-    const checkCredits = async () => {
-      if (session?.user?.email) {
-        try {
-          const response = await fetch("/api/credits/check");
-          const data = await response.json();
-          setCredits(data.credits);
-          setHasUnlimitedAccess(data.hasUnlimitedAccess);
-        } catch (error) {
-          toast({
-            title: "Error",
-            description: "Failed to fetch credits. Please try again later.",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-
-    checkCredits();
-  }, [session]);
-
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -283,49 +234,71 @@ export default function ValidatePage() {
     router.push('/pricing');
   };
 
-  const onSubmit = async (data: FormData) => {
-    if (!session) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to use this feature.",
-        variant: "destructive",
-      });
-      router.push("/auth/signin");
-      return;
-    }
-
-    if (!hasUnlimitedAccess && (!credits || credits <= 0)) {
-      toast({
-        title: "Insufficient credits",
-        description: "Please purchase more credits to continue.",
-        variant: "destructive",
-      });
-      router.push("/pricing");
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
+    setError(null);
+
+    // Check if user has credits or unlimited access
+    if (!userCredits) {
+      setError('Unable to verify credits. Please try again.');
+      setIsLoading(false);
+      return;
+    }
+
+    const now = new Date();
+    const hasValidUnlimited = userCredits.has_unlimited && 
+      userCredits.unlimited_until && 
+      new Date(userCredits.unlimited_until) > now;
+
+    if (!hasValidUnlimited && userCredits.credits_balance === 0) {
+      setError('You need credits to analyze your idea.');
+      setIsLoading(false);
+      handleNeedCredits();
+      return;
+    }
+
+    // Validate required fields
+    if (!formData.description || !formData.industry || !formData.targetCustomers || 
+        !formData.pricingModel || !formData.currentStage || !formData.teamComposition) {
+      setError('Please fill in all required fields');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch("/api/validate", {
-        method: "POST",
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...formData,
+          userId: user!.id,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to submit analysis");
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze idea');
       }
 
       const result = await response.json();
-      router.push(`/results/${result.id}`);
+      if (result.success && result.analysisId) {
+        // Deduct credit if not unlimited
+        if (!hasValidUnlimited && userCredits.credits_balance > 0) {
+          await supabase.rpc('add_credits', {
+            p_user_id: user!.id,
+            p_credits: -1
+          });
+        }
+        router.push(`/analysis/${result.analysisId}`);
+      } else {
+        throw new Error('No analysis ID returned');
+      }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to submit analysis. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Error submitting form:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -335,21 +308,12 @@ export default function ValidatePage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    form.setValue(name as FormFields, value);
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (name: FormFields, value: string) => {
-    form.setValue(name, value);
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
-
-  if (status === "loading") {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
-
-  if (status === "unauthenticated") {
-    router.push("/auth/signin");
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-white pt-36 pb-12">
@@ -396,33 +360,31 @@ export default function ValidatePage() {
             </div>
           )}
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="productDescription" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Product Description
               </label>
               <Textarea
-                id="productDescription"
-                aria-label="Product Description"
-                {...form.register("productDescription")}
-                placeholder="Describe your product idea..."
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe your product idea in detail..."
                 className="w-full"
                 rows={4}
+                required
               />
-              {form.formState.errors.productDescription && (
-                <p className="mt-1 text-sm text-red-600">{form.formState.errors.productDescription.message}</p>
-              )}
             </div>
 
             <div>
-              <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Industry
               </label>
               <Select
+                value={formData.industry}
                 onValueChange={(value) => handleSelectChange("industry", value)}
-                value={form.watch("industry")}
               >
-                <SelectTrigger id="industry" className="w-full">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select an industry" />
                 </SelectTrigger>
                 <SelectContent>
@@ -433,46 +395,46 @@ export default function ValidatePage() {
                   ))}
                 </SelectContent>
               </Select>
-              {form.formState.errors.industry && (
-                <p className="mt-1 text-sm text-red-600">{form.formState.errors.industry.message}</p>
+              {!formData.industry && (
+                <p className="mt-1 text-sm text-red-600">Please select an industry</p>
               )}
             </div>
 
-            {form.watch("industry") && (
+            {formData.industry && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Sub-industry
                 </label>
                 <Select
-                  value={form.watch("subIndustry")}
+                  value={formData.subIndustry}
                   onValueChange={(value) => handleSelectChange("subIndustry", value)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a sub-industry" />
                   </SelectTrigger>
                   <SelectContent>
-                    {subIndustryOptions[form.watch("industry") as keyof typeof subIndustryOptions].map((option) => (
+                    {subIndustryOptions[formData.industry as keyof typeof subIndustryOptions].map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {form.formState.errors.subIndustry && (
-                  <p className="mt-1 text-sm text-red-600">{form.formState.errors.subIndustry.message}</p>
+                {!formData.subIndustry && (
+                  <p className="mt-1 text-sm text-red-600">Please select a sub-industry</p>
                 )}
               </div>
             )}
 
             <div>
-              <label htmlFor="targetCustomers" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Target Customers
               </label>
               <Select
+                value={formData.targetCustomers}
                 onValueChange={(value) => handleSelectChange("targetCustomers", value)}
-                value={form.watch("targetCustomers")}
               >
-                <SelectTrigger id="targetCustomers" className="w-full">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select target customers" />
                 </SelectTrigger>
                 <SelectContent>
@@ -483,20 +445,20 @@ export default function ValidatePage() {
                   ))}
                 </SelectContent>
               </Select>
-              {form.formState.errors.targetCustomers && (
-                <p className="mt-1 text-sm text-red-600">{form.formState.errors.targetCustomers.message}</p>
+              {!formData.targetCustomers && (
+                <p className="mt-1 text-sm text-red-600">Please select target customers</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="pricingModel" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Pricing Model
               </label>
               <Select
+                value={formData.pricingModel}
                 onValueChange={(value) => handleSelectChange("pricingModel", value)}
-                value={form.watch("pricingModel")}
               >
-                <SelectTrigger id="pricingModel" className="w-full">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a pricing model" />
                 </SelectTrigger>
                 <SelectContent>
@@ -507,20 +469,20 @@ export default function ValidatePage() {
                   ))}
                 </SelectContent>
               </Select>
-              {form.formState.errors.pricingModel && (
-                <p className="mt-1 text-sm text-red-600">{form.formState.errors.pricingModel.message}</p>
+              {!formData.pricingModel && (
+                <p className="mt-1 text-sm text-red-600">Please select a pricing model</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="currentStage" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Current Stage
               </label>
               <Select
+                value={formData.currentStage}
                 onValueChange={(value) => handleSelectChange("currentStage", value)}
-                value={form.watch("currentStage")}
               >
-                <SelectTrigger id="currentStage" className="w-full">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select current stage" />
                 </SelectTrigger>
                 <SelectContent>
@@ -531,20 +493,20 @@ export default function ValidatePage() {
                   ))}
                 </SelectContent>
               </Select>
-              {form.formState.errors.currentStage && (
-                <p className="mt-1 text-sm text-red-600">{form.formState.errors.currentStage.message}</p>
+              {!formData.currentStage && (
+                <p className="mt-1 text-sm text-red-600">Please select current stage</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="teamComposition" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Team Composition
               </label>
               <Select
+                value={formData.teamComposition}
                 onValueChange={(value) => handleSelectChange("teamComposition", value)}
-                value={form.watch("teamComposition")}
               >
-                <SelectTrigger id="teamComposition" className="w-full">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select team composition" />
                 </SelectTrigger>
                 <SelectContent>
@@ -555,19 +517,19 @@ export default function ValidatePage() {
                   ))}
                 </SelectContent>
               </Select>
-              {form.formState.errors.teamComposition && (
-                <p className="mt-1 text-sm text-red-600">{form.formState.errors.teamComposition.message}</p>
+              {!formData.teamComposition && (
+                <p className="mt-1 text-sm text-red-600">Please select team composition</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="additionalInfo" className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Additional Information
               </label>
               <Textarea
-                id="additionalInfo"
-                aria-label="Additional Information"
-                {...form.register("additionalInfo")}
+                name="additionalInfo"
+                value={formData.additionalInfo}
+                onChange={handleChange}
                 placeholder="Any additional information that might be relevant..."
                 className="w-full"
                 rows={3}
@@ -578,7 +540,6 @@ export default function ValidatePage() {
               type="submit"
               className="w-full"
               disabled={isLoading}
-              aria-label={isLoading ? "Analyzing..." : "Start Analysis"}
             >
               {isLoading ? "Analyzing..." : "Start Analysis"}
             </Button>

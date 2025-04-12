@@ -132,29 +132,56 @@ export default function Home() {
   const supabase = createClientComponentClient()
   const [selectedDimension, setSelectedDimension] = useState<Dimension | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  // Removed dimensions data as it came from sampleAnalysis
-  // const dimensions: Dimension[] = [ ... ];
+  const [session, setSession] = useState<any>(null)
+  const [isAuthChecking, setIsAuthChecking] = useState(true)
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession()
+        setSession(currentSession)
+      } catch (error) {
+        console.error('Error checking session:', error)
+      } finally {
+        setIsAuthChecking(false)
+      }
+    }
+
+    checkSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase])
 
   const handleTryValidFlow = async () => {
     setIsLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
       if (!session) {
+        console.log('No session found, redirecting to signin')
         router.push('/signin?redirectTo=/validate')
         return
       }
 
+      console.log('Session found:', session)
+
       // Check if user has credits or free analysis
-      const { data: credits } = await supabase
+      const { data: credits, error: creditsError } = await supabase
         .from('user_credits')
         .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
         .eq('user_id', session.user.id)
         .single()
 
-      if (!credits) {
+      console.log('Credits data:', credits)
+      console.log('Credits error:', creditsError)
+
+      if (creditsError || !credits) {
         // No credits record, create one with free analysis
-        await supabase
+        const { data: newCredits, error: insertError } = await supabase
           .from('user_credits')
           .insert({
             user_id: session.user.id,
@@ -162,7 +189,18 @@ export default function Home() {
             has_unlimited: false,
             free_analysis_used: false
           })
-        router.push('/validate')
+          .select()
+          .single()
+
+        console.log('New credits created:', newCredits)
+        console.log('Insert error:', insertError)
+
+        if (!insertError && newCredits) {
+          router.push('/validate')
+        } else {
+          console.error('Error creating credits:', insertError)
+          router.push('/validate')
+        }
       } else {
         const now = new Date()
         const hasValidUnlimited = credits.has_unlimited && 
@@ -176,7 +214,7 @@ export default function Home() {
         }
       }
     } catch (error) {
-      console.error('Error checking credits:', error)
+      console.error('Error in handleTryValidFlow:', error)
       router.push('/validate')
     } finally {
       setIsLoading(false)
@@ -210,14 +248,38 @@ export default function Home() {
           </Link>
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <Link href="/signin">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Sign Up</Button>
-          </Link>
+          {!isAuthChecking && (
+            session ? (
+              <>
+                <Link href="/validate">
+                  <Button variant="ghost" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={async () => {
+                    await supabase.auth.signOut()
+                    router.push('/')
+                  }}
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/signin">
+                  <Button variant="ghost" size="sm">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button size="sm">Sign Up</Button>
+                </Link>
+              </>
+            )
+          )}
         </div>
       </header>
       <main className="flex-1">
@@ -258,7 +320,7 @@ export default function Home() {
                     size="lg" 
                     className="gap-1 bg-black hover:bg-black/90"
                     onClick={handleTryValidFlow}
-                    disabled={isLoading}
+                    disabled={isLoading || isAuthChecking}
                   >
                     {isLoading ? "Loading..." : "Try ValidFlow"} {!isLoading && <ArrowRight className="h-4 w-4" />}
                   </Button>

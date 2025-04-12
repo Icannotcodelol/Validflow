@@ -14,15 +14,14 @@ export async function middleware(req: NextRequest) {
     // Create the Supabase client
     const supabase = createMiddlewareClient<Database>({ req, res })
 
-    // Refresh session if it exists
-    const { data: { session }, error } = await supabase.auth.getSession()
-    
-    if (error) {
-      console.error('Auth session error:', error)
-    }
+    // Always refresh the session if it exists
+    await supabase.auth.getSession()
 
     const path = req.nextUrl.pathname
     const isPublicRoute = publicRoutes.includes(path)
+
+    // Get the session after refreshing
+    const { data: { session } } = await supabase.auth.getSession()
 
     // If the route is not public and there's no session, redirect to signin
     if (!isPublicRoute && !session) {
@@ -46,7 +45,7 @@ export async function middleware(req: NextRequest) {
       style-src 'self' 'unsafe-inline';
       img-src 'self' data: https://*.stripe.com;
       frame-src 'self' https://js.stripe.com https://hooks.stripe.com;
-      connect-src 'self' https://api.stripe.com https://m.stripe.network;
+      connect-src 'self' https://api.stripe.com https://m.stripe.network wss://*.supabase.co;
       font-src 'self';
     `.replace(/\s{2,}/g, ' ').trim()
 

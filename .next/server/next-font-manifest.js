@@ -1,1 +1,1 @@
-self.__NEXT_FONT_MANIFEST='{"pages":{"/_app":["static/media/a34f9d1faa5f3315-s.p.woff2"]},"app":{"/Users/maxhenkes/Desktop/ValiNow-REPAIR/src/app/layout":["static/media/a34f9d1faa5f3315-s.p.woff2"]},"appUsingSizeAdjust":true,"pagesUsingSizeAdjust":true}';
+self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/Users/maxhenkes/Desktop/ValiNow-REPAIR/src/app/layout\":[\"static/media/a34f9d1faa5f3315-s.p.woff2\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"

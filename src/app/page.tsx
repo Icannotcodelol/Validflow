@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, ArrowRight, BarChart3, CheckCircle, ChevronRight, Lightbulb, Target } from "lucide-react"
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -126,9 +128,60 @@ const sampleAnalysis: AnalysisDocument = {
 */
 
 export default function Home() {
+  const router = useRouter()
+  const supabase = createClientComponentClient()
   const [selectedDimension, setSelectedDimension] = useState<Dimension | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   // Removed dimensions data as it came from sampleAnalysis
   // const dimensions: Dimension[] = [ ... ];
+
+  const handleTryValidFlow = async () => {
+    setIsLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/signin?redirectTo=/validate')
+        return
+      }
+
+      // Check if user has credits or free analysis
+      const { data: credits } = await supabase
+        .from('user_credits')
+        .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (!credits) {
+        // No credits record, create one with free analysis
+        await supabase
+          .from('user_credits')
+          .insert({
+            user_id: session.user.id,
+            credits_balance: 0,
+            has_unlimited: false,
+            free_analysis_used: false
+          })
+        router.push('/validate')
+      } else {
+        const now = new Date()
+        const hasValidUnlimited = credits.has_unlimited && 
+          credits.unlimited_until && 
+          new Date(credits.unlimited_until) > now
+
+        if (hasValidUnlimited || credits.credits_balance > 0 || !credits.free_analysis_used) {
+          router.push('/validate')
+        } else {
+          router.push('/pricing')
+        }
+      }
+    } catch (error) {
+      console.error('Error checking credits:', error)
+      router.push('/validate')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleDimensionClick = (dimension: Dimension) => {
     setSelectedDimension(dimension)
@@ -170,7 +223,15 @@ export default function Home() {
       <main className="flex-1">
         <div className="container mx-auto px-4 py-8">
           {/* Hero Section with background image */}
-          <section className="w-full min-h-[80vh] relative flex items-center py-12 md:py-24 lg:py-32 xl:py-48 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/images/hero-bg.jpg')" }}>
+          <section 
+            className="w-full min-h-[80vh] relative flex items-center py-12 md:py-24 lg:py-32 xl:py-48 bg-cover bg-center bg-no-repeat overflow-hidden" 
+            style={{ 
+              backgroundImage: "url('/images/hero-bg.jpg')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
             <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black/80"></div>
             <div className="container relative pl-8 md:pl-12 pr-4 md:pr-6 z-10">
               <div className="max-w-3xl">
@@ -193,11 +254,14 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row mt-8">
-                  <Link href="/validate">
-                    <Button size="lg" className="gap-1 bg-black hover:bg-black/90">
-                      Try ValidFlow <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <Button 
+                    size="lg" 
+                    className="gap-1 bg-black hover:bg-black/90"
+                    onClick={handleTryValidFlow}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Loading..." : "Try ValidFlow"} {!isLoading && <ArrowRight className="h-4 w-4" />}
+                  </Button>
                   <Link href="/pricing">
                     <Button size="lg" variant="outline" className="bg-black hover:bg-black/90 text-white border-white/20">
                       View Pricing

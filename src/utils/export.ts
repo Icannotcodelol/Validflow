@@ -49,9 +49,9 @@ function checkAddPage(doc: jsPDFWithAutoTable, currentY: number, requiredHeight 
 function addSectionTitle(doc: jsPDFWithAutoTable, title: string): number {
   yPos = checkAddPage(doc, yPos, LINE_HEIGHT * 2 + SECTION_SPACING);
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
-  doc.text(title, PAGE_MARGIN, yPos);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('', 'bold');
+  doc.text(title ?? '', PAGE_MARGIN, yPos);
+  doc.setFont('', 'normal');
   yPos += LINE_HEIGHT * 1.5;
   return yPos;
 }
@@ -59,9 +59,9 @@ function addSectionTitle(doc: jsPDFWithAutoTable, title: string): number {
 function addSubHeading(doc: jsPDFWithAutoTable, title: string): number {
    yPos = checkAddPage(doc, yPos, LINE_HEIGHT * 1.5 + SUBSECTION_SPACING);
    doc.setFontSize(13);
-   doc.setFont(undefined, 'bold');
-   doc.text(title, PAGE_MARGIN, yPos);
-   doc.setFont(undefined, 'normal');
+   doc.setFont('', 'bold');
+   doc.text(title ?? '', PAGE_MARGIN, yPos);
+   doc.setFont('', 'normal');
    yPos += LINE_HEIGHT * 1.2;
    return yPos;
 }
@@ -99,9 +99,9 @@ function addKeyValue(doc: jsPDFWithAutoTable, key: string, value: string | numbe
 
    yPos = checkAddPage(doc, yPos);
    doc.setFontSize(11);
-   doc.setFont(undefined, 'bold');
+   doc.setFont('', 'bold');
    doc.text(`${key}:`, PAGE_MARGIN + indent, yPos);
-   doc.setFont(undefined, 'normal');
+   doc.setFont('', 'normal');
 
    const keyWidth = doc.getTextWidth(`${key}: `);
    const remainingWidth = CONTENT_WIDTH - indent - keyWidth;
@@ -145,11 +145,11 @@ export async function exportToPDF(analysis: AnalysisDocument) {
 
   // --- Report Title ---
   doc.setFontSize(22);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('', 'bold');
   doc.text("Business Analysis Report", doc.internal.pageSize.width / 2, yPos, { align: 'center' });
-  doc.setFont(undefined, 'normal');
+  doc.setFont('', 'normal');
   yPos += LINE_HEIGHT * 2;
-  addKeyValue(doc, "User Input", analysis.userInput?.description ?? 'N/A');
+  addKeyValue(doc, "User Input", analysis.formData?.description ?? 'N/A');
   yPos += SECTION_SPACING;
 
 
@@ -237,9 +237,9 @@ export async function exportToPDF(analysis: AnalysisDocument) {
         targetUsersData.primaryUserPersonas.forEach(persona => {
             yPos = checkAddPage(doc, yPos);
     doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
+            doc.setFont('', 'bold');
             doc.text(persona?.name ?? 'Unnamed Persona', PAGE_MARGIN, yPos);
-            doc.setFont(undefined, 'normal');
+            doc.setFont('', 'normal');
             yPos += LINE_HEIGHT;
             addParagraph(doc, persona?.description);
             addKeyValue(doc, "Pain Points", persona?.painPoints?.join(', ') ?? '', LIST_INDENT);
@@ -359,9 +359,9 @@ export async function exportToPDF(analysis: AnalysisDocument) {
        marketingData.channels.forEach(channel => {
            yPos = checkAddPage(doc, yPos);
       doc.setFontSize(12);
-           doc.setFont(undefined, 'bold');
+           doc.setFont('', 'bold');
            doc.text(channel?.name ?? 'Unnamed Channel', PAGE_MARGIN, yPos);
-           doc.setFont(undefined, 'normal');
+           doc.setFont('', 'normal');
            yPos += LINE_HEIGHT;
            addKeyValue(doc, "Description", channel?.description, LIST_INDENT);
            addKeyValue(doc, "Type", channel?.type, LIST_INDENT);
@@ -409,9 +409,9 @@ export async function exportToPDF(analysis: AnalysisDocument) {
          gtmData.launchStrategy.phases.forEach(phase => {
              yPos = checkAddPage(doc, yPos);
              doc.setFontSize(12);
-             doc.setFont(undefined, 'bold');
+             doc.setFont('', 'bold');
              doc.text(phase?.phase ?? 'Unnamed Phase', PAGE_MARGIN, yPos);
-             doc.setFont(undefined, 'normal');
+             doc.setFont('', 'normal');
              yPos += LINE_HEIGHT;
              addKeyValue(doc, "Timeline", phase?.timeline, LIST_INDENT);
              addKeyValue(doc, "Activities", "", LIST_INDENT);
@@ -549,30 +549,33 @@ export async function exportToPDF(analysis: AnalysisDocument) {
   }
 
   // --- Critical Thought Questions ---
-  const criticalQuestionsSection = analysis.sections.criticalThoughtQuestions;
-  if (isSectionComplete(criticalQuestionsSection)) {
-      const criticalQuestionsData = criticalQuestionsSection as CriticalThoughtQuestions;
-      addSectionTitle(doc, "Critical Thought Questions");
-      (criticalQuestionsData.questions ?? []).forEach(category => {
-          addSubHeading(doc, category?.category ?? 'Uncategorized Questions');
-          if (category?.questions) {
-              category.questions.forEach(q => {
-                 yPos = checkAddPage(doc, yPos);
-                 doc.setFontSize(11);
-                 doc.setFont(undefined, 'bold');
-                 doc.text(q?.question ?? 'Unnamed Question', PAGE_MARGIN, yPos);
-                 doc.setFont(undefined, 'normal');
-                 yPos += LINE_HEIGHT * 0.9;
-                 addKeyValue(doc, "Importance", q?.importance, LIST_INDENT);
-                 if (q?.context) {
-                    addKeyValue(doc, "Context/Recommendations", q.context, LIST_INDENT);
-                 }
-                 yPos += SUBSECTION_SPACING / 2;
-              });
-          }
-          yPos += SUBSECTION_SPACING;
-      });
-      yPos += SECTION_SPACING;
+  const criticalThoughtSection = analysis.sections.criticalThoughtQuestions;
+  if (isSectionComplete(criticalThoughtSection)) {
+    // Explicitly type criticalThoughtData and the loop variable q
+    const criticalThoughtData = criticalThoughtSection as CriticalThoughtQuestions;
+    type QuestionType = typeof criticalThoughtData.questions[0];
+
+    addSectionTitle(doc, "Critical Thought Questions");
+    criticalThoughtData.questions?.forEach((q: QuestionType) => {
+      yPos = checkAddPage(doc, yPos);
+      doc.setFontSize(11);
+      doc.setFont('', 'bold');
+      // Access q.question, not q.questions
+      doc.text(q?.question ?? 'Unnamed Question', PAGE_MARGIN, yPos);
+      doc.setFont('', 'normal');
+      yPos += LINE_HEIGHT * 0.9;
+      // Pass correct properties to helper functions
+      addKeyValue(doc, "Category", q?.category, LIST_INDENT);
+      addKeyValue(doc, "Priority", q?.priority, LIST_INDENT);
+      addParagraph(doc, q?.analysis, LIST_INDENT);
+      // Optionally list recommendations (as steps)
+      if (q?.recommendations && q.recommendations.length > 0) {
+         addSubHeading(doc, "Recommendations");
+         addList(doc, q.recommendations.map(r => r.step ?? ''), LIST_INDENT * 2);
+      }
+       yPos += SUBSECTION_SPACING; // Add spacing between questions
+    });
+    yPos += SECTION_SPACING;
   }
 
   // --- Report Summary ---
@@ -580,23 +583,31 @@ export async function exportToPDF(analysis: AnalysisDocument) {
   if (isSectionComplete(reportSummarySection)) {
     const reportSummaryData = reportSummarySection as ReportSummary;
     addSectionTitle(doc, "Report Summary");
-    addKeyValue(doc, "Risk Level", reportSummaryData.riskLevel);
-    addKeyValue(doc, "Confidence Score", `${reportSummaryData.confidenceScore ?? 'N/A'}/100`);
-    addSubHeading(doc, "Overall Assessment");
-    addParagraph(doc, reportSummaryData.overallAssessment);
+    addParagraph(doc, reportSummaryData.summary);
 
     if (reportSummaryData.keyFindings && reportSummaryData.keyFindings.length > 0) {
       addSubHeading(doc, "Key Findings");
       addList(doc, reportSummaryData.keyFindings);
     }
-    if (reportSummaryData.keyRecommendations && reportSummaryData.keyRecommendations.length > 0) {
-      addSubHeading(doc, "Key Recommendations");
-      addList(doc, reportSummaryData.keyRecommendations);
+
+    // Use correct property name: recommendations
+    if (reportSummaryData.recommendations && reportSummaryData.recommendations.length > 0) {
+      addSubHeading(doc, "Recommendations");
+      reportSummaryData.recommendations.forEach(recCategory => {
+          if (recCategory && recCategory.category && recCategory.items) {
+              addSubHeading(doc, recCategory.category);
+              // Map recommendation items (ActionableItem objects) to strings for addList
+              addList(doc, recCategory.items.map(item => item.step ?? ''), LIST_INDENT * 2);
+          }
+      });
     }
-     if (reportSummaryData.nextSteps && reportSummaryData.nextSteps.length > 0) {
-        addSubHeading(doc, "Next Steps");
-        addList(doc, reportSummaryData.nextSteps);
+
+    if (reportSummaryData.nextSteps && reportSummaryData.nextSteps.length > 0) {
+       addSubHeading(doc, "Next Steps");
+       // Map nextSteps (ActionableItem objects) to strings for addList
+       addList(doc, reportSummaryData.nextSteps.map(item => item.step ?? ''), LIST_INDENT);
     }
+    yPos += SECTION_SPACING;
   }
 
   // --- Save the PDF ---

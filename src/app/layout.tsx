@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { Providers } from "@/components/providers/Providers"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -17,6 +18,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID
+
   return (
     <html lang="en">
       <head>
@@ -31,6 +34,7 @@ export default function RootLayout({
         </Providers>
         <Analytics />
         <SpeedInsights />
+        {gaId && <GoogleAnalytics gaId={gaId} />}
       </body>
     </html>
   )

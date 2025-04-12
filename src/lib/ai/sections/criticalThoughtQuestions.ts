@@ -1,4 +1,4 @@
-import { CriticalThoughtQuestions, UserInput } from '../models';
+import { CriticalThoughtQuestions, UserInput, ActionableItem } from '../models';
 import Anthropic from '@anthropic-ai/sdk';
   
 const anthropic = new Anthropic({
@@ -59,35 +59,50 @@ interface QuestionInput {
   considerations?: string[];
 }
 
-function transformCriticalThoughtQuestionsData(data: { questions: QuestionInput[] } & Partial<CriticalThoughtQuestions>): CriticalThoughtQuestions {
-  // Group questions by category and transform them to the expected format
-  const groupedQuestions = data.questions.reduce((acc: Record<string, Array<{
-    question: string;
-    importance: 'high' | 'medium' | 'low';
-    context?: string;
-  }>>, q: QuestionInput) => {
-    if (!acc[q.category]) {
-      acc[q.category] = [];
-    }
-    acc[q.category].push({
-      question: q.question,
-      importance: q.importance.toLowerCase() as 'high' | 'medium' | 'low',
-      context: q.considerations?.join('. ')
-    });
-    return acc;
-  }, {});
+function transformCriticalThoughtQuestionsData(data: { questions: QuestionInput[], riskAreas?: any[] } & Partial<CriticalThoughtQuestions>): CriticalThoughtQuestions {
 
-  // Transform to the final format
+  const transformedQuestions = (data.questions || []).map(q => {
+    // Map priority, ensuring valid enum value
+    let priority: 'high' | 'medium' | 'low' = 'medium'; // Default
+    const importanceLower = q.importance?.toLowerCase();
+    if (importanceLower === 'high' || importanceLower === 'medium' || importanceLower === 'low') {
+      priority = importanceLower;
+    }
+
+    // Use considerations for analysis, default empty strings/arrays for others
+    const analysis = q.considerations?.join('. ') || '';
+    const implications: string[] = []; // Default empty
+    const recommendations: ActionableItem[] = []; // Default empty
+
+    return {
+      category: q.category || 'Uncategorized', // Default
+      question: q.question || 'No question provided', // Default
+      analysis: analysis,
+      priority: priority,
+      implications: implications,
+      recommendations: recommendations,
+    };
+  });
+
+  // Default empty risk assessment - Cannot map from current AI output format
+  const riskAssessment = {
+    highPriority: [],
+    mediumPriority: [],
+    lowPriority: [],
+  };
+
+  // Construct the final object matching the schema
   return {
+    // Base fields from input data or defaults
     status: data.status || 'completed',
     error: data.error,
     sectionId: data.sectionId || '',
     createdAt: data.createdAt || new Date(),
     updatedAt: data.updatedAt || new Date(),
-    questions: Object.entries(groupedQuestions).map(([category, questions]) => ({
-      category,
-      questions
-    }))
+
+    // Transformed data fields matching CriticalThoughtQuestionsSchema
+    questions: transformedQuestions,
+    riskAssessment: riskAssessment,
   };
 }
   

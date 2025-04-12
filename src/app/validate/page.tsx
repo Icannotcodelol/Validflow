@@ -141,39 +141,82 @@ export default function ValidatePage() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[ValidatePage useEffect] Running checkUser...');
+      setLoading(true); // Ensure loading is true at the start
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('[ValidatePage useEffect] Error getting session:', sessionError);
+        // Decide how to handle session errors, maybe redirect?
+        setLoading(false);
+        router.push("/signin?error=session_error"); // Example redirect
+        return; 
+      }
+
+      console.log('[ValidatePage useEffect] Session data:', session);
+
       if (!session) {
+        console.log('[ValidatePage useEffect] No session found, redirecting to signin.');
+        setLoading(false); // Set loading false before redirect
         router.push("/signin");
       } else {
+        console.log(`[ValidatePage useEffect] Session found for user: ${session.user.id}. Fetching credits...`);
         setUser(session.user);
-        // Fetch user credits
-        const { data: credits, error: creditsError } = await supabase
-          .from('user_credits')
-          .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (creditsError && creditsError.code === 'PGRST116') {
-          // No record exists, create one
-          const { data: newCredits, error: insertError } = await supabase
+        
+        try {
+          // Fetch user credits
+          const { data: credits, error: creditsError } = await supabase
             .from('user_credits')
-            .insert({
-              user_id: session.user.id,
-              credits_balance: 0,
-              has_unlimited: false,
-              free_analysis_used: false
-            })
-            .select()
+            .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
+            .eq('user_id', session.user.id)
             .single();
 
-          if (!insertError && newCredits) {
-            setUserCredits(newCredits);
+          console.log('[ValidatePage useEffect] Fetched credits data:', credits);
+          console.log('[ValidatePage useEffect] Credits fetch error:', creditsError);
+
+          if (creditsError && creditsError.code !== 'PGRST116') {
+            // Handle unexpected errors during fetch
+            console.error('[ValidatePage useEffect] Unexpected error fetching credits:', creditsError);
+            setError(`Error fetching user data: ${creditsError.message}`);
+            // Don't set userCredits if fetch failed unexpectedly
+          } else if (creditsError && creditsError.code === 'PGRST116') {
+            // No record exists, create one
+            console.log('[ValidatePage useEffect] No credits record found, creating one...');
+            const { data: newCredits, error: insertError } = await supabase
+              .from('user_credits')
+              .insert({
+                user_id: session.user.id,
+                credits_balance: 0, // Start with 0 credits
+                has_unlimited: false,
+                free_analysis_used: false // Ensure this is set
+              })
+              .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used') // Select the fields needed
+              .single();
+
+            if (insertError) {
+              console.error('[ValidatePage useEffect] Error inserting credits record:', insertError);
+              setError(`Error setting up user account: ${insertError.message}`);
+            } else if (newCredits) {
+              console.log('[ValidatePage useEffect] Credits record created successfully:', newCredits);
+              setUserCredits(newCredits);
+            } else {
+               console.warn('[ValidatePage useEffect] Insert call completed but returned no data.');
+               setError('Failed to initialize user account.');
+            }
+          } else if (credits) {
+            // Record found and fetched successfully
+            console.log('[ValidatePage useEffect] Credits record found:', credits);
+            setUserCredits(credits);
           }
-        } else if (!creditsError && credits) {
-          setUserCredits(credits);
+        } catch (fetchCatchError: any) {
+           console.error('[ValidatePage useEffect] Caught exception during credits fetch/insert:', fetchCatchError);
+           setError(`An unexpected error occurred: ${fetchCatchError.message}`);
+        } finally {
+           console.log('[ValidatePage useEffect] Setting loading to false.');
+           setLoading(false); // Ensure loading is set to false after all paths
         }
       }
-      setLoading(false);
+      // setLoading(false); // Moved inside the else block and finally block
     };
 
     checkUser();

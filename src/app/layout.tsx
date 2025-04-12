@@ -1,13 +1,15 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import SupabaseProvider from "@/components/providers/SessionProvider"
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Providers } from "@/components/providers/Providers"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "ValiNow - Validate Your Business Ideas",
-  description: "AI-powered business idea validation platform",
+  title: "ValidFlow - AI-Powered Product Validation",
+  description: "Validate your product ideas with AI-powered analysis",
 }
 
 export default function RootLayout({
@@ -22,11 +24,13 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className={inter.className}>
-        <SupabaseProvider>
+        <Providers>
           <div className="min-h-screen bg-background">
             {children}
           </div>
-        </SupabaseProvider>
+        </Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

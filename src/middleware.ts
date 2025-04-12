@@ -2,18 +2,16 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import type { Database } from '@/types/supabase'
-import { checkSupabaseEnv } from '@/lib/supabase/env-check'
-import { supabaseConfig } from '@/lib/supabase/config'
+
+// List of public routes that don't require authentication
+const publicRoutes = ['/', '/signin', '/signup', '/auth/callback', '/pricing', '/about', '/features']
 
 export async function middleware(req: NextRequest) {
   try {
-    // Verify environment variables
-    checkSupabaseEnv()
-
     // Create a response early
     const res = NextResponse.next()
 
-    // Create the Supabase client with verified config
+    // Create the Supabase client
     const supabase = createMiddlewareClient<Database>({ req, res })
 
     // Refresh session if it exists
@@ -21,6 +19,24 @@ export async function middleware(req: NextRequest) {
     
     if (error) {
       console.error('Auth session error:', error)
+    }
+
+    const path = req.nextUrl.pathname
+    const isPublicRoute = publicRoutes.includes(path)
+
+    // If the route is not public and there's no session, redirect to signin
+    if (!isPublicRoute && !session) {
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/signin'
+      redirectUrl.searchParams.set('redirectTo', path)
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    // If we have a session and we're on an auth page, redirect to validate
+    if (session && (path === '/signin' || path === '/signup')) {
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/validate'
+      return NextResponse.redirect(redirectUrl)
     }
 
     // Add security headers
@@ -32,14 +48,13 @@ export async function middleware(req: NextRequest) {
       frame-src 'self' https://js.stripe.com https://hooks.stripe.com;
       connect-src 'self' https://api.stripe.com https://m.stripe.network;
       font-src 'self';
-    `.replace(/\s{2,}/g, ' ').trim();
+    `.replace(/\s{2,}/g, ' ').trim()
 
-    res.headers.set('Content-Security-Policy', cspHeader);
+    res.headers.set('Content-Security-Policy', cspHeader)
 
     return res
   } catch (error) {
     console.error('Middleware error:', error)
-    // Always return a response, even if there's an error
     return NextResponse.next()
   }
 }

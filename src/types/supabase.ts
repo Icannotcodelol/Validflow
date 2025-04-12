@@ -38,18 +38,30 @@ export interface Database {
       user_credits: {
         Row: {
           user_id: string
-          free_analysis_used: boolean
+          credits_balance: number
+          has_unlimited: boolean
+          unlimited_until: string | null
+          subscription_id: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           user_id: string
-          free_analysis_used?: boolean
+          credits_balance?: number
+          has_unlimited?: boolean
+          unlimited_until?: string | null
+          subscription_id?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           user_id?: string
-          free_analysis_used?: boolean
+          credits_balance?: number
+          has_unlimited?: boolean
+          unlimited_until?: string | null
+          subscription_id?: string | null
           created_at?: string
+          updated_at?: string
         }
       }
     }
@@ -57,7 +69,27 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_credits: {
+        Args: {
+          p_user_id: string
+          p_credits: number
+        }
+        Returns: void
+      }
+      update_subscription: {
+        Args: {
+          p_user_id: string
+          p_subscription_id: string
+          p_current_period_end: string
+        }
+        Returns: void
+      }
+      remove_unlimited_access: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: void
+      }
     }
     Enums: {
       [_ in never]: never

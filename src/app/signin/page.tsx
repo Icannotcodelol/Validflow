@@ -1,53 +1,30 @@
-"use client";
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import SignInForm from '@/components/SignInForm'
 
-import { supabase } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+export default async function SignIn({
+  searchParams,
+}: {
+  searchParams: { redirectTo?: string }
+}) {
+  const supabase = createServerComponentClient({ cookies })
+  const { data: { session } } = await supabase.auth.getSession()
 
-export default function SignInPage() {
-  const router = useRouter();
-
-  const handleSignIn = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/validate`
-        }
-      });
-      
-      if (error) throw error;
-    } catch (error) {
-      console.error("Sign in error:", error);
-    }
-  };
+  if (session) {
+    redirect('/validate')
+  }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="w-full max-w-md space-y-8 p-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Welcome to ValiNow</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to start validating your business ideas
-          </p>
+    <div className="flex min-h-screen flex-col items-center justify-center py-2">
+      <div className="w-full max-w-md space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
+            Sign in to your account
+          </h2>
         </div>
-        <div className="mt-8 space-y-4">
-          <Button
-            onClick={handleSignIn}
-            className="w-full"
-            variant="outline"
-          >
-            Continue with Google
-          </Button>
-          <Button
-            onClick={() => router.push("/")}
-            className="w-full"
-            variant="ghost"
-          >
-            Back to Home
-          </Button>
-        </div>
+        <SignInForm redirectTo={searchParams.redirectTo} />
       </div>
     </div>
-  );
+  )
 } 

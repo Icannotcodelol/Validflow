@@ -208,19 +208,7 @@ export default function ValidatePage() {
       userCredits.unlimited_until && 
       new Date(userCredits.unlimited_until) > now;
 
-    if (!hasValidUnlimited && userCredits.credits === 0 && !userCredits.free_analysis_used) {
-      // Use free analysis
-      const { error: updateError } = await supabase
-        .from('user_credits')
-        .update({ free_analysis_used: true })
-        .eq('user_id', user!.id);
-
-      if (updateError) {
-        setError('Failed to use free analysis. Please try again.');
-        setIsLoading(false);
-        return;
-      }
-    } else if (!hasValidUnlimited && userCredits.credits === 0) {
+    if (!hasValidUnlimited && userCredits.credits_balance === 0) {
       setError('You need credits to analyze your idea.');
       setIsLoading(false);
       handleNeedCredits();
@@ -255,7 +243,7 @@ export default function ValidatePage() {
       const result = await response.json();
       if (result.success && result.analysisId) {
         // Deduct credit if not unlimited
-        if (!hasValidUnlimited && userCredits.credits > 0) {
+        if (!hasValidUnlimited && userCredits.credits_balance > 0) {
           await supabase.rpc('add_credits', {
             p_user_id: user!.id,
             p_credits: -1

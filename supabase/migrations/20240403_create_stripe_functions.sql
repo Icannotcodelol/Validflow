@@ -5,7 +5,7 @@ DROP POLICY IF EXISTS "Only functions can modify credits" ON user_credits;
 -- Create the user_credits table if it doesn't exist
 CREATE TABLE IF NOT EXISTS user_credits (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id),
-  credits INTEGER DEFAULT 0,
+  credits_balance INTEGER DEFAULT 0,
   has_unlimited BOOLEAN DEFAULT false,
   unlimited_until TIMESTAMP WITH TIME ZONE,
   subscription_id TEXT,
@@ -20,11 +20,11 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  INSERT INTO user_credits (user_id, credits)
+  INSERT INTO user_credits (user_id, credits_balance)
   VALUES (p_user_id, p_credits)
   ON CONFLICT (user_id)
   DO UPDATE SET
-    credits = user_credits.credits + p_credits,
+    credits_balance = user_credits.credits_balance + p_credits,
     updated_at = CURRENT_TIMESTAMP;
 END;
 $$;
@@ -45,7 +45,7 @@ BEGIN
     has_unlimited,
     unlimited_until,
     subscription_id,
-    credits
+    credits_balance
   )
   VALUES (
     p_user_id,
@@ -83,23 +83,20 @@ $$;
 -- Create RLS policies
 ALTER TABLE user_credits ENABLE ROW LEVEL SECURITY;
 
--- Recreate the policies
+-- Users can view their own credits
 CREATE POLICY "Users can view their own credits"
   ON user_credits
   FOR SELECT
   TO authenticated
   USING (auth.uid() = user_id);
 
-CREATE POLICY "Only functions can modify credits"
+-- Allow the application to modify credits through functions
+CREATE POLICY "Application can modify credits through functions"
   ON user_credits
   FOR ALL
   TO authenticated
-  USING (false)
-  WITH CHECK (false);
-
--- Drop existing trigger if it exists
-DROP TRIGGER IF EXISTS update_user_credits_updated_at ON user_credits;
-DROP FUNCTION IF EXISTS update_updated_at_column();
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Create trigger to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -114,6 +111,21 @@ CREATE TRIGGER update_user_credits_updated_at
     BEFORE UPDATE ON user_credits
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Create trigger for new users
+CREATE OR REPLACE FUNCTION create_user_credits()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.user_credits (user_id, credits_balance, has_unlimited)
+  VALUES (NEW.id, 0, false);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION create_user_credits();
 
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO authenticated;

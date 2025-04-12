@@ -1,161 +1,132 @@
-import { Check, Lightbulb } from "lucide-react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { useSupabase } from '@/components/providers/SessionProvider';
+import { StripeCheckout } from '@/components/StripeCheckout';
+import type { User } from '@supabase/supabase-js';
 
 export default function PricingPage() {
-  const tiers = [
-    {
-      name: "Free",
-      price: "$0",
-      description: "Perfect for testing the waters",
-      features: [
-        "1 idea validation per month",
-        "Basic market research",
-        "Simple financial projections",
-        "Core feature analysis",
-        "Email support"
-      ],
-      cta: "Get Started",
-      href: "/signup"
-    },
-    {
-      name: "Pro",
-      price: "$49",
-      period: "per month",
-      description: "Best for serious entrepreneurs",
-      features: [
-        "5 idea validations per month",
-        "Advanced market research",
-        "Detailed financial modeling",
-        "Competitor analysis",
-        "VC sentiment analysis",
-        "Priority support",
-        "Export to PDF/CSV",
-        "Custom branding"
-      ],
-      cta: "Start Pro Trial",
-      href: "/signup?plan=pro",
-      popular: true
-    },
-    {
-      name: "Enterprise",
-      price: "Custom",
-      description: "For teams and organizations",
-      features: [
-        "Unlimited idea validations",
-        "Custom AI models",
-        "API access",
-        "Team collaboration",
-        "Dedicated account manager",
-        "Custom integrations",
-        "Training & onboarding",
-        "SLA & support"
-      ],
-      cta: "Contact Sales",
-      href: "/contact"
-    }
-  ]
+  const router = useRouter();
+  const supabase = useSupabase();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/signin');
+      } else {
+        setUser(session.user);
+      }
+      setLoading(false);
+    };
+
+    checkUser();
+  }, [supabase, router]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return null; // Router will redirect to signin
+  }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="px-4 lg:px-6 h-14 flex items-center border-b">
-        <Link className="flex items-center justify-center" href="/">
-          <Lightbulb className="h-6 w-6 text-primary" />
-          <span className="ml-2 text-xl font-bold">ValidFlow</span>
-        </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/features">
-            Features
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/pricing">
-            Pricing
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/about">
-            About
-          </Link>
-        </nav>
-        <div className="ml-auto flex items-center gap-2">
-          <Link href="/signin">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Sign Up</Button>
-          </Link>
+    <div className="min-h-screen bg-white pt-36 pb-12">
+      <div className="container mx-auto px-4">
+        <div className="absolute top-8 left-8">
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/validate")}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            ← Back to Validation
+          </Button>
         </div>
-      </header>
-      <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
-                  Simple, Transparent Pricing
-                </h1>
-                <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                  Choose the perfect plan for your idea validation needs
-                </p>
-              </div>
+
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Choose Your Plan</h1>
+            <p className="text-xl text-gray-600">
+              Get instant access to AI-powered business idea validation
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Credits Package */}
+            <div className="rounded-lg border border-gray-200 shadow-sm p-8">
+              <h2 className="text-2xl font-semibold mb-4">Pay As You Go</h2>
+              <p className="text-gray-600 mb-4">Perfect for testing a few ideas</p>
+              <div className="text-4xl font-bold mb-6">€9.99<span className="text-lg text-gray-500 font-normal">/credit</span></div>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  1 comprehensive analysis
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Detailed PDF report
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  No commitment
+                </li>
+              </ul>
+              <StripeCheckout
+                priceId={process.env.NEXT_PUBLIC_STRIPE_CREDIT_PRICE_ID!}
+                type="credits"
+                userId={user.id}
+                credits={1}
+              />
             </div>
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8 mt-12">
-              {tiers.map((tier, index) => (
-                <div
-                  key={index}
-                  className={`relative overflow-hidden rounded-lg border bg-background p-6 ${
-                    tier.popular ? 'ring-2 ring-primary' : ''
-                  }`}
-                >
-                  {tier.popular && (
-                    <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs text-primary-foreground">
-                      Popular
-                    </div>
-                  )}
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold">{tier.name}</h3>
-                    <div className="mt-2">
-                      <span className="text-3xl font-bold">{tier.price}</span>
-                      {tier.period && (
-                        <span className="text-muted-foreground">/{tier.period}</span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {tier.description}
-                    </p>
-                  </div>
-                  <ul className="mb-6 space-y-2">
-                    {tier.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center text-sm">
-                        <Check className="mr-2 h-4 w-4 text-primary" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={tier.href} className="block">
-                    <Button
-                      className="w-full"
-                      variant={tier.popular ? 'default' : 'outline'}
-                    >
-                      {tier.cta}
-                    </Button>
-                  </Link>
-                </div>
-              ))}
+
+            {/* Unlimited Package */}
+            <div className="rounded-lg border border-blue-200 shadow-sm p-8 bg-blue-50">
+              <div className="absolute top-4 right-4">
+                <span className="bg-blue-500 text-white text-xs px-3 py-1 rounded-full">Best Value</span>
+              </div>
+              <h2 className="text-2xl font-semibold mb-4">Unlimited Access</h2>
+              <p className="text-gray-600 mb-4">For serious entrepreneurs</p>
+              <div className="text-4xl font-bold mb-6">€99.99<span className="text-lg text-gray-500 font-normal">/month</span></div>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Unlimited analyses
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Priority processing
+                </li>
+                <li className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Cancel anytime
+                </li>
+              </ul>
+              <StripeCheckout
+                priceId={process.env.NEXT_PUBLIC_STRIPE_UNLIMITED_PRICE_ID!}
+                type="unlimited"
+                userId={user.id}
+              />
             </div>
           </div>
-        </section>
-      </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">© 2024 ValidFlow. All rights reserved.</p>
-        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-xs hover:underline underline-offset-4" href="#">
-            Terms of Service
-          </Link>
-          <Link className="text-xs hover:underline underline-offset-4" href="#">
-            Privacy
-          </Link>
-        </nav>
-      </footer>
+        </div>
+      </div>
     </div>
-  )
+  );
 } 

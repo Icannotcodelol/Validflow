@@ -4,6 +4,7 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/supabase';
 import { processAnalysis } from '@/lib/ai/analysis-processor';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +21,33 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log('[analyze API] Received request body:', body);
     
+    // Check user credits/subscription
+    const { data: credits, error: creditsError } = await supabase
+      .from('user_credits')
+      .select('credits, has_unlimited, unlimited_until, free_analysis_used')
+      .eq('user_id', user.id)
+      .single();
+
+    if (creditsError) {
+      console.error('Error checking credits:', creditsError);
+      return NextResponse.json(
+        { error: 'Failed to verify credits' },
+        { status: 500 }
+      );
+    }
+
+    const now = new Date();
+    const hasValidUnlimited = credits.has_unlimited && 
+      credits.unlimited_until && 
+      new Date(credits.unlimited_until) > now;
+
+    if (!hasValidUnlimited && credits.credits === 0 && credits.free_analysis_used) {
+      return NextResponse.json(
+        { error: 'No credits available' },
+        { status: 403 }
+      );
+    }
+
     // Handle initial form submission
     if (body.description) {
       try {
@@ -51,6 +79,32 @@ export async function POST(req: NextRequest) {
         });
 
         console.log(`[analyze API] Successfully created analysis ID: ${analysisId}`);
+
+        // If not unlimited and using a credit, deduct it
+        if (!hasValidUnlimited && credits.credits > 0) {
+          const { error: updateError } = await supabase.rpc('add_credits', {
+            p_user_id: user.id,
+            p_credits: -1
+          });
+
+          if (updateError) {
+            console.error('Error updating credits:', updateError);
+            // Don't return error here, the analysis was successful
+          }
+        }
+
+        // If using free analysis, mark it as used
+        if (!hasValidUnlimited && credits.credits === 0 && !credits.free_analysis_used) {
+          const { error: updateError } = await supabase
+            .from('user_credits')
+            .update({ free_analysis_used: true })
+            .eq('user_id', user.id);
+
+          if (updateError) {
+            console.error('Error updating free analysis status:', updateError);
+            // Don't return error here, the analysis was successful
+          }
+        }
 
         return NextResponse.json({ 
           success: true,

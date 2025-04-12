@@ -122,6 +122,12 @@ export default function ValidatePage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userCredits, setUserCredits] = useState<{
+    credits: number;
+    has_unlimited: boolean;
+    unlimited_until: string | null;
+    free_analysis_used: boolean;
+  } | null>(null);
   const [formData, setFormData] = useState({
     description: "",
     industry: "",
@@ -140,6 +146,32 @@ export default function ValidatePage() {
         router.push("/signin");
       } else {
         setUser(session.user);
+        // Fetch user credits
+        const { data: credits, error: creditsError } = await supabase
+          .from('user_credits')
+          .select('credits, has_unlimited, unlimited_until, free_analysis_used')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (creditsError && creditsError.code === 'PGRST116') {
+          // No record exists, create one
+          const { data: newCredits, error: insertError } = await supabase
+            .from('user_credits')
+            .insert({
+              user_id: session.user.id,
+              credits: 0,
+              has_unlimited: false,
+              free_analysis_used: false
+            })
+            .select()
+            .single();
+
+          if (!insertError && newCredits) {
+            setUserCredits(newCredits);
+          }
+        } else if (!creditsError && credits) {
+          setUserCredits(credits);
+        }
       }
       setLoading(false);
     };
@@ -155,10 +187,45 @@ export default function ValidatePage() {
     return null; // Router will redirect to signin
   }
 
+  const handleNeedCredits = () => {
+    router.push('/pricing');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+
+    // Check if user has credits or unlimited access
+    if (!userCredits) {
+      setError('Unable to verify credits. Please try again.');
+      setIsLoading(false);
+      return;
+    }
+
+    const now = new Date();
+    const hasValidUnlimited = userCredits.has_unlimited && 
+      userCredits.unlimited_until && 
+      new Date(userCredits.unlimited_until) > now;
+
+    if (!hasValidUnlimited && userCredits.credits === 0 && !userCredits.free_analysis_used) {
+      // Use free analysis
+      const { error: updateError } = await supabase
+        .from('user_credits')
+        .update({ free_analysis_used: true })
+        .eq('user_id', user!.id);
+
+      if (updateError) {
+        setError('Failed to use free analysis. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+    } else if (!hasValidUnlimited && userCredits.credits === 0) {
+      setError('You need credits to analyze your idea.');
+      setIsLoading(false);
+      handleNeedCredits();
+      return;
+    }
 
     // Validate required fields
     if (!formData.description || !formData.industry || !formData.targetCustomers || 
@@ -174,7 +241,10 @@ export default function ValidatePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          userId: user!.id,
+        }),
       });
 
       if (!response.ok) {
@@ -184,6 +254,13 @@ export default function ValidatePage() {
 
       const result = await response.json();
       if (result.success && result.analysisId) {
+        // Deduct credit if not unlimited
+        if (!hasValidUnlimited && userCredits.credits > 0) {
+          await supabase.rpc('add_credits', {
+            p_user_id: user!.id,
+            p_credits: -1
+          });
+        }
         router.push(`/analysis/${result.analysisId}`);
       } else {
         throw new Error('No analysis ID returned');
@@ -222,9 +299,28 @@ export default function ValidatePage() {
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Validate Your Product Idea</h1>
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500 text-sm mb-4">
               Fill out the form below to get a comprehensive analysis of your product concept.
             </p>
+            {userCredits && (
+              <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md inline-block">
+                {userCredits.has_unlimited ? (
+                  <span className="font-medium text-green-600">
+                    Unlimited Access Active
+                    {userCredits.unlimited_until && 
+                      ` (until ${new Date(userCredits.unlimited_until).toLocaleDateString()})`}
+                  </span>
+                ) : (
+                  <span>
+                    {userCredits.credits === 0 && !userCredits.free_analysis_used ? (
+                      <span className="text-blue-600">Free Analysis Available</span>
+                    ) : (
+                      <span>Credits Remaining: <span className="font-medium">{userCredits.credits}</span></span>
+                    )}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {error && (

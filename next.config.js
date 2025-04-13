@@ -26,6 +26,9 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           {
+            // CSP configuration includes required domains for:
+            // - Google Analytics (*.google-analytics.com, *.analytics.google.com)
+            // - Google Tag Manager (*.googletagmanager.com)
             key: 'Content-Security-Policy',
             value: `
               default-src 'self';

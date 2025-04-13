@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
           currentStage: body.currentStage,
           teamComposition: body.teamComposition,
           additionalInfo: body.additionalInfo,
+          submissionDate: new Date().toISOString(),
         });
 
         console.log(`[analyze API] Successfully stored form data for analysis ID: ${analysisId}`);

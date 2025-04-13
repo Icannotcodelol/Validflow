@@ -231,6 +231,9 @@ function generatePromptForSection(
     Current Stage: ${formData.currentStage}
     Team Composition: ${formData.teamComposition}
     ${formData.additionalInfo ? `Additional Info: ${formData.additionalInfo}` : ''}
+    Analysis Date: ${formData.submissionDate}
+
+    Note: All timelines, projections, and deadlines should be calculated relative to the Analysis Date.
   `.trim();
 
   const prompts: Record<typeof ANALYSIS_SECTIONS[number], string> = {
@@ -566,7 +569,7 @@ Analyze potential investor sentiment and market context in the following EXACT J
   },
   "marketActivity": {
      "investmentVolume": {
-       "total": "Total investment volume in the relevant sector/timeframe (e.g., '$9.5B')",
+       "total": "Total investment volume in the relevant sector/timeframe. (e.g., '$9.5B')",
        "timeframe": "Timeframe for the volume (e.g., 'Last 12 months')",
        "trend": "Trend direction (e.g., 'Increasing', 'Stable', 'Decreasing')",
        "growth": "Growth rate if available (e.g., '20% YoY')",

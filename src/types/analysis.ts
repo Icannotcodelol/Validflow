@@ -7,6 +7,7 @@ export interface AnalysisFormData {
   currentStage: string;
   teamComposition: string;
   additionalInfo?: string;
+  submissionDate: string;
 }
 
 export interface AnalysisSection {

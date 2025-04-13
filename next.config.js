@@ -26,17 +26,23 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           {
-            // CSP configuration includes required domains for:
-            // - Google Analytics (*.google-analytics.com, *.analytics.google.com)
-            // - Google Tag Manager (*.googletagmanager.com)
             key: 'Content-Security-Policy',
             value: `
               default-src 'self';
-              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://*.stripe.network https://vercel.live https://va.vercel-scripts.com https://*.google-analytics.com https://*.googletagmanager.com;
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://*.stripe.network https://vercel.live https://va.vercel-scripts.com https://*.supabase.co;
               style-src 'self' 'unsafe-inline';
-              img-src 'self' data: blob: https://*.stripe.com https://validflow.io https://*.google-analytics.com https://*.googletagmanager.com;
-              frame-src 'self' https://*.stripe.com https://*.stripe.network https://hooks.stripe.com https://vercel.live;
-              connect-src 'self' https://*.stripe.com https://*.stripe.network https://api.stripe.com wss://*.stripe.com https://*.supabase.co https://validflow.io https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com;
+              img-src 'self' data: blob: https://*.stripe.com https://validflow.io https://*.supabase.co https://lh3.googleusercontent.com;
+              frame-src 'self' https://*.stripe.com https://*.stripe.network https://hooks.stripe.com https://vercel.live https://*.supabase.co;
+              connect-src 'self' 
+                https://*.stripe.com 
+                https://*.stripe.network 
+                https://api.stripe.com 
+                wss://*.stripe.com 
+                https://*.supabase.co 
+                wss://*.supabase.co 
+                https://validflow.io 
+                https://*.vercel.com 
+                https://*.vercel-insights.com;
               font-src 'self' data:;
               object-src 'none';
               base-uri 'self';

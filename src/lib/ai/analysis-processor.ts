@@ -231,9 +231,6 @@ function generatePromptForSection(
     Current Stage: ${formData.currentStage}
     Team Composition: ${formData.teamComposition}
     ${formData.additionalInfo ? `Additional Info: ${formData.additionalInfo}` : ''}
-    Analysis Date: ${formData.submissionDate}
-
-    Note: All timelines, projections, and deadlines should be calculated relative to the Analysis Date.
   `.trim();
 
   const prompts: Record<typeof ANALYSIS_SECTIONS[number], string> = {

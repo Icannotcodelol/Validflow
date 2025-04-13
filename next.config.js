@@ -29,11 +29,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: `
               default-src 'self';
-              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://*.stripe.network https://vercel.live https://va.vercel-scripts.com;
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://*.stripe.network https://vercel.live https://va.vercel-scripts.com https://*.google-analytics.com https://*.googletagmanager.com;
               style-src 'self' 'unsafe-inline';
-              img-src 'self' data: blob: https://*.stripe.com https://validflow.io;
+              img-src 'self' data: blob: https://*.stripe.com https://validflow.io https://*.google-analytics.com https://*.googletagmanager.com;
               frame-src 'self' https://*.stripe.com https://*.stripe.network https://hooks.stripe.com https://vercel.live;
-              connect-src 'self' https://*.stripe.com https://*.stripe.network https://api.stripe.com wss://*.stripe.com https://*.supabase.co https://validflow.io;
+              connect-src 'self' https://*.stripe.com https://*.stripe.network https://api.stripe.com wss://*.stripe.com https://*.supabase.co https://validflow.io https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com;
               font-src 'self' data:;
               object-src 'none';
               base-uri 'self';

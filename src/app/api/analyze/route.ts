@@ -20,7 +20,16 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     console.log('[analyze API] Received request body:', body);
+
+    // Check if this is a section update request
+    if (body.analysisId && body.sectionKey) {
+      console.log('[analyze API] Processing section update request');
+      const orchestrator = new Orchestrator(supabase);
+      await orchestrator.updateAnalysisSection(body.analysisId, body.sectionKey, body.data);
+      return NextResponse.json({ success: true });
+    }
     
+    // If we reach here, this is an initial analysis creation request
     // Check user credits/subscription
     const { data: credits, error: creditsError } = await supabase
       .from('user_credits')
@@ -66,10 +75,29 @@ export async function POST(req: NextRequest) {
           currentStage: body.currentStage,
           teamComposition: body.teamComposition,
           additionalInfo: body.additionalInfo,
-          submissionDate: new Date().toISOString(),
         });
 
         console.log(`[analyze API] Successfully stored form data for analysis ID: ${analysisId}`);
+
+        // Deduct credit BEFORE starting the analysis to prevent multiple deductions
+        if (!hasValidUnlimited && credits.credits_balance > 0) {
+          console.log(`[analyze API] Deducting credit for user: ${user.id}`);
+          const { error: updateError } = await supabase.rpc('add_credits', {
+            p_user_id: user.id,
+            p_credits: -1
+          });
+
+          if (updateError) {
+            console.error('Error updating credits:', updateError);
+            // Rollback analysis creation if credit deduction fails
+            await orchestrator.updateAnalysisStatus(analysisId, 'failed');
+            return NextResponse.json(
+              { error: 'Failed to process credits' },
+              { status: 500 }
+            );
+          }
+          console.log(`[analyze API] Successfully deducted credit for user: ${user.id}`);
+        }
 
         // Start processing the analysis in the background
         console.log(`[analyze API] Attempting to start background processing for analysis ID: ${analysisId}`);
@@ -80,19 +108,6 @@ export async function POST(req: NextRequest) {
         });
 
         console.log(`[analyze API] Successfully created analysis ID: ${analysisId}`);
-
-        // If not unlimited and using a credit, deduct it
-        if (!hasValidUnlimited && credits.credits_balance > 0) {
-          const { error: updateError } = await supabase.rpc('add_credits', {
-            p_user_id: user.id,
-            p_credits: -1
-          });
-
-          if (updateError) {
-            console.error('Error updating credits:', updateError);
-            // Don't return error here, the analysis was successful
-          }
-        }
 
         return NextResponse.json({ 
           success: true,
@@ -107,19 +122,10 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // Handle section updates
-    const { analysisId, sectionKey, data } = body;
-    if (!analysisId || !sectionKey || !data) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    const orchestrator = new Orchestrator(supabase);
-    await orchestrator.updateAnalysisSection(analysisId, sectionKey, data);
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { error: "Invalid request" },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("Failed to process analysis:", error);
     return NextResponse.json(

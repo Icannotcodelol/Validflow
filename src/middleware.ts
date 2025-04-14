@@ -6,9 +6,36 @@ import type { Database } from '@/types/supabase'
 // List of public routes that don't require authentication
 const publicRoutes = ['/', '/signin', '/signup', '/auth/callback', '/pricing', '/about', '/features']
 
+// List of paths that should skip auth check completely
+const skipAuthPaths = [
+  '/_next',
+  '/static',
+  '/api',
+  '/images',
+  '/favicon.ico',
+  '/manifest.json',
+  '/robots.txt',
+  '/apple-touch-icon.png',
+  '/apple-touch-icon-precomposed.png'
+]
+
 export async function middleware(req: NextRequest) {
   try {
-    console.log('[Middleware] Processing request for path:', req.nextUrl.pathname)
+    const path = req.nextUrl.pathname
+    
+    // Skip auth check for static resources and API routes
+    if (path.startsWith('/_next') || 
+        path.startsWith('/api') || 
+        path.startsWith('/static') || 
+        path.startsWith('/images') ||
+        path === '/favicon.ico' ||
+        path === '/manifest.json' ||
+        path === '/robots.txt' ||
+        path.match(/\.(ico|png|jpg|jpeg|gif|svg|js|css|woff|woff2|ttf|eot)$/)) {
+      return NextResponse.next()
+    }
+
+    console.log(`[Middleware] 🚀 Processing request for path: ${path}`)
     
     // Create a response early
     const res = NextResponse.next()
@@ -16,75 +43,80 @@ export async function middleware(req: NextRequest) {
     // Create the Supabase client
     const supabase = createMiddlewareClient<Database>({ req, res })
 
-    // Get the session
+    // Get the session with rate limit error handling
+    console.log(`[Middleware] 🔐 Checking auth session for: ${path}`)
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (error) {
-      console.error('[Middleware] Error getting session:', error)
-      // Don't redirect on error, let the application handle it
+      if (error.status === 429) {
+        console.warn(`[Middleware] ⚠️ Rate limit reached for path: ${path}`)
+        console.warn(`[Middleware] Allowing request to proceed despite rate limit`)
+        return res
+      }
+      
+      console.error(`[Middleware] ❌ Auth error for ${path}:`, error)
       return res
     }
 
-    const path = req.nextUrl.pathname
     const isPublicRoute = publicRoutes.includes(path)
 
-    console.log('[Middleware] Session status:', !!session)
-    console.log('[Middleware] Is public route:', isPublicRoute)
+    console.log(`[Middleware] ℹ️ Path: ${path}`)
+    console.log(`[Middleware] ℹ️ Session: ${session ? 'Active' : 'None'}`)
+    console.log(`[Middleware] ℹ️ Public Route: ${isPublicRoute}`)
 
     // If the route is not public and there's no session, redirect to signin
     if (!isPublicRoute && !session) {
-      console.log('[Middleware] Redirecting to signin')
+      console.log(`[Middleware] 🔄 Redirecting to signin from: ${path}`)
       const redirectUrl = req.nextUrl.clone()
       redirectUrl.pathname = '/signin'
       redirectUrl.searchParams.set('redirectTo', path)
       return NextResponse.redirect(redirectUrl)
     }
 
-    // If we have a session and we're on an auth page, redirect to validate
+    // If we have a session and we're on an auth page, redirect to home
     if (session && (path === '/signin' || path === '/signup')) {
-      console.log('[Middleware] Redirecting authenticated user to validate')
+      console.log(`[Middleware] 🏠 Redirecting authenticated user to home`)
       const redirectUrl = req.nextUrl.clone()
-      redirectUrl.pathname = '/validate'
+      redirectUrl.pathname = '/'
       return NextResponse.redirect(redirectUrl)
     }
 
-    // Add security headers
+    // Add security headers with broader Supabase access
     const cspHeader = `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.stripe.com https://*.stripe.network;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.stripe.com;
-      frame-src 'self' https://js.stripe.com https://hooks.stripe.com;
-      connect-src 'self' https://api.stripe.com https://m.stripe.network wss://*.supabase.co;
+      img-src 'self' data: https://*.stripe.com https://*.supabase.co;
+      frame-src 'self' https://*.stripe.com https://*.stripe.network https://*.supabase.co;
+      connect-src 'self' 
+        https://*.supabase.co 
+        wss://*.supabase.co 
+        https://api.stripe.com 
+        https://*.stripe.com 
+        https://*.stripe.network 
+        wss://*.stripe.com;
       font-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      frame-ancestors 'none';
+      upgrade-insecure-requests;
     `.replace(/\s{2,}/g, ' ').trim()
 
     res.headers.set('Content-Security-Policy', cspHeader)
 
     return res
   } catch (error) {
-    console.error('[Middleware] Error:', error)
-    // On error, let the request continue
+    console.error('[Middleware] ❌ Unexpected error:', error)
     return NextResponse.next()
   }
 }
 
-// Update matcher to be more specific
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Match all paths except Next.js internals and static files
      */
-    {
-      source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
-      missing: [
-        { type: 'header', key: 'next-router-prefetch' },
-        { type: 'header', key: 'purpose', value: 'prefetch' },
-      ],
-    },
-  ],
+    '/((?!_next|static|favicon.ico|manifest.json|robots.txt).*)'
+  ]
 } 

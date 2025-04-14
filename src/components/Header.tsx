@@ -37,7 +37,7 @@ export default function Header() {
           onClick={() => router.push("/")}
           className="text-xl font-semibold"
         >
-          ValiNow
+          ValidFlow
         </Button>
         {isAuthenticated ? (
           <nav className="flex items-center gap-4">
@@ -67,6 +67,12 @@ export default function Header() {
               onClick={() => router.push("/signin")}
             >
               Sign In
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/signup")}
+            >
+              Sign Up
             </Button>
           </nav>
         )}

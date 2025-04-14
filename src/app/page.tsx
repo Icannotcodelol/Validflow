@@ -12,6 +12,7 @@ import { TypingAnimation } from "@/components/typing-animation"
 import { productIdeas } from "@/lib/product-ideas"
 import { AnalysisDisplay } from "@/components/AnalysisDisplay"
 import { AnalysisDocument, UserInputSchema, ExecutiveSummarySchema, MarketSizeGrowthSchema, TargetUsersSchema, CompetitionSchema, UnitEconomicsSchema, MarketingChannelsSchema, GoToMarketPlanSchema, CriticalThoughtQuestionsSchema, VCSentimentSchema, ReportSummarySchema } from "@/lib/ai/models"
+import PDFViewer from "@/components/ui/pdf-viewer"
 
 interface Detail {
   title: string
@@ -330,6 +331,27 @@ export default function Home() {
                     </Button>
                   </Link>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Demo Analysis Section */}
+          <section className="w-full py-12 bg-gray-50 dark:bg-gray-900">
+            <div className="container px-4 md:px-6">
+              <div className="flex flex-col items-center space-y-4 text-center mb-8">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+                  See What You'll Get
+                </h2>
+                <p className="mx-auto max-w-[700px] text-gray-500 dark:text-gray-400">
+                  Check out a sample analysis report that shows the depth and quality of our validation process.
+                </p>
+              </div>
+              <div className="max-w-5xl mx-auto">
+                <PDFViewer 
+                  pdfUrl="/demo-analysis.pdf"
+                  height={800}
+                  className="mx-auto"
+                />
               </div>
             </div>
           </section>

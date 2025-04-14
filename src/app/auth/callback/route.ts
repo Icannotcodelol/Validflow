@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     console.log('[Auth Callback] Starting callback processing')
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
-    const redirectTo = requestUrl.searchParams.get('redirectTo') || '/'
+    const redirectTo = requestUrl.searchParams.get('redirectTo') || '/validate'
 
     console.log('[Auth Callback] Code present:', !!code)
     console.log('[Auth Callback] Redirecting to:', redirectTo)

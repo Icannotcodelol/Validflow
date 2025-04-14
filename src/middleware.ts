@@ -40,34 +40,23 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // If we have a session and we're on an auth page, redirect to home
+    // If we have a session and we're on an auth page, redirect to validate
     if (session && (path === '/signin' || path === '/signup')) {
-      console.log('[Middleware] Redirecting authenticated user to home')
+      console.log('[Middleware] Redirecting authenticated user to validate')
       const redirectUrl = req.nextUrl.clone()
-      redirectUrl.pathname = '/'
+      redirectUrl.pathname = '/validate'
       return NextResponse.redirect(redirectUrl)
     }
 
-    // Add security headers with broader Supabase access
+    // Add security headers
     const cspHeader = `
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.stripe.com https://*.stripe.network;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network;
       style-src 'self' 'unsafe-inline';
-      img-src 'self' data: https://*.stripe.com https://*.supabase.co;
-      frame-src 'self' https://*.stripe.com https://*.stripe.network https://*.supabase.co;
-      connect-src 'self' 
-        https://*.supabase.co 
-        wss://*.supabase.co 
-        https://api.stripe.com 
-        https://*.stripe.com 
-        https://*.stripe.network 
-        wss://*.stripe.com;
+      img-src 'self' data: https://*.stripe.com;
+      frame-src 'self' https://js.stripe.com https://hooks.stripe.com;
+      connect-src 'self' https://api.stripe.com https://m.stripe.network wss://*.supabase.co;
       font-src 'self';
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-      frame-ancestors 'none';
-      upgrade-insecure-requests;
     `.replace(/\s{2,}/g, ' ').trim()
 
     res.headers.set('Content-Security-Policy', cspHeader)

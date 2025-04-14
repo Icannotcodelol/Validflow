@@ -46,6 +46,7 @@
     "next-auth": "^4.24.11",
     "next-themes": "^0.2.1",
     "openai": "^4.91.0",
+    "pdfjs-dist": "^5.1.91",
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.51.0",

@@ -27,7 +27,28 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.perplexity.ai https://api.anthropic.com https://api.openai.com;"
+            value: `
+              default-src 'self';
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://*.stripe.network https://vercel.live https://va.vercel-scripts.com https://*.supabase.co;
+              style-src 'self' 'unsafe-inline';
+              img-src 'self' data: blob: https://*.stripe.com https://validflow.io https://*.supabase.co https://lh3.googleusercontent.com;
+              frame-src 'self' https://*.stripe.com https://*.stripe.network https://hooks.stripe.com https://vercel.live https://*.supabase.co;
+              connect-src 'self' 
+                https://*.stripe.com 
+                https://*.stripe.network 
+                https://api.stripe.com 
+                wss://*.stripe.com 
+                https://*.supabase.co 
+                wss://*.supabase.co 
+                https://validflow.io 
+                https://*.vercel.com 
+                https://*.vercel-insights.com;
+              font-src 'self' data:;
+              object-src 'none';
+              base-uri 'self';
+              form-action 'self';
+              upgrade-insecure-requests;
+            `.replace(/\s{2,}/g, ' ').trim()
           },
           {
             key: 'X-Frame-Options',

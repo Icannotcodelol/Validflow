@@ -40,11 +40,11 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // If we have a session and we're on an auth page, redirect to validate
+    // If we have a session and we're on an auth page, redirect to home
     if (session && (path === '/signin' || path === '/signup')) {
-      console.log('[Middleware] Redirecting authenticated user to validate')
+      console.log('[Middleware] Redirecting authenticated user to home')
       const redirectUrl = req.nextUrl.clone()
-      redirectUrl.pathname = '/validate'
+      redirectUrl.pathname = '/'
       return NextResponse.redirect(redirectUrl)
     }
 

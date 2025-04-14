@@ -12,7 +12,7 @@ export default async function SignIn({
   const { data: { session } } = await supabase.auth.getSession()
 
   if (session) {
-    redirect('/validate')
+    redirect('/')
   }
 
   return (

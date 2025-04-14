@@ -3,7 +3,7 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Button } from '@/components/ui/button'
 
-export default function SignInForm({ redirectTo = '/validate' }: { redirectTo?: string }) {
+export default function SignInForm({ redirectTo = '/' }: { redirectTo?: string }) {
   const supabase = createClientComponentClient()
 
   const handleSignIn = async () => {

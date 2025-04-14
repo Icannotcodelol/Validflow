@@ -8,7 +8,7 @@ export function createClient() {
   return createClientComponentClient<Database>({
     cookieOptions: {
       name: 'sb-auth',
-      domain: process.env.NEXT_PUBLIC_BASE_URL ? new URL(process.env.NEXT_PUBLIC_BASE_URL).hostname : 'localhost',
+      domain: process.env.NODE_ENV === 'production' ? '.validflow.io' : 'localhost',
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/'

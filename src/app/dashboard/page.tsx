@@ -16,11 +16,14 @@ import RiskAssessment from "@/components/dashboard/RiskAssessment"
 import BarriersToEntry from "@/components/dashboard/BarriersToEntry"
 import { sampleAnalysisResult } from "@/utils/sample-data"
 import { AnalysisResult } from "@/types/dashboard"
+import { AnalysisLoadingState } from "@/components/AnalysisLoadingState"
 
 export default function DashboardPage() {
   const router = useRouter()
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(true)
+  const [currentSection, setCurrentSection] = useState<string>()
+  const [completedSections, setCompletedSections] = useState<string[]>([])
 
   useEffect(() => {
     // In development, use sample data
@@ -36,7 +39,7 @@ export default function DashboardPage() {
       return
     }
 
-    // In production, load from localStorage
+    // In production, load from localStorage and track progress
     const result = localStorage.getItem('analysisResult')
     if (!result) {
       router.push('/validate')
@@ -45,6 +48,24 @@ export default function DashboardPage() {
     
     try {
       const parsed = JSON.parse(result)
+      
+      // Update progress based on sections status
+      if (parsed.sections) {
+        const completed: string[] = []
+        let current: string | undefined
+        
+        Object.entries(parsed.sections).forEach(([key, section]: [string, any]) => {
+          if (section?.status === 'completed') {
+            completed.push(key)
+          } else if (section?.status === 'pending' && !current) {
+            current = key
+          }
+        })
+        
+        setCompletedSections(completed)
+        setCurrentSection(current)
+      }
+      
       setAnalysisResult(parsed)
       setLoading(false)
     } catch (e) {
@@ -59,10 +80,10 @@ export default function DashboardPage() {
         <Header />
         <main className="container mx-auto py-8 px-4 mt-16">
           <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-lg text-muted-foreground">Loading analysis...</p>
-            </div>
+            <AnalysisLoadingState
+              currentSection={currentSection}
+              completedSections={completedSections}
+            />
           </div>
         </main>
       </div>

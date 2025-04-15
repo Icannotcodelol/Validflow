@@ -29,9 +29,9 @@ interface AnalysisDisplayProps {
 export function AnalysisDisplay({ analysis, isLoading, error, /* hideProgress */ }: AnalysisDisplayProps) {
   console.log('[AnalysisDisplay] Rendering with analysis:', {
     status: analysis.status,
-    sections: Object.keys(analysis.sections as Record<string, BaseSectionResponse>),
-    completedSections: Object.entries(analysis.sections as Record<string, BaseSectionResponse>)
-      .filter(([_, section]) => section?.status === 'completed')
+    sections: Object.keys(analysis.sections || {}),
+    completedSections: Object.entries(analysis.sections || {})
+      .filter(([_, section]) => (section as BaseSectionResponse)?.status === 'completed')
       .map(([key]) => key)
   });
 
@@ -56,47 +56,39 @@ export function AnalysisDisplay({ analysis, isLoading, error, /* hideProgress */
     console.log('Raw sections data:', JSON.stringify(analysis.sections, null, 2));
   }
 
-  const renderSection = (key: string, section: BaseSectionResponse | undefined) => {
-    if (!section) return null;
+  const sections = [
+    'executiveSummary',
+    'marketSizeGrowth',
+    'targetUsers',
+    'competition',
+    'unitEconomics',
+    'revenueCalculator',
+    'marketingChannels',
+    'goToMarketPlan',
+    'vcSentiment',
+    'criticalThoughtQuestions',
+    'validationRoadmap',
+    'keyPerformanceIndicators',
+    'experimentDesign',
+    'reportSummary'
+  ] as const;
 
-    const SectionComponent = {
-      executiveSummary: ExecutiveSummary,
-      marketSizeGrowth: MarketSizeGrowth,
-      targetUsers: TargetUsers,
-      competition: Competition,
-      unitEconomics: UnitEconomics,
-      marketingChannels: MarketingChannels,
-      goToMarketPlan: GoToMarketPlan,
-      validationRoadmap: ValidationRoadmap,
-      keyPerformanceIndicators: KeyPerformanceIndicators,
-      experimentDesign: ExperimentDesign,
-      vcSentiment: VCSentiment,
-      criticalThoughtQuestions: CriticalThoughtQuestions,
-      reportSummary: ReportSummary,
-    }[key];
-
-    if (!SectionComponent) {
-      console.warn(`No component found for section: ${key}`);
-      return null;
-    }
-
-    if (key === 'vcSentiment') {
-      return (
-        <SectionComponent
-          key={key}
-          {...section}
-          isLandingPage={false}
-        />
-      );
-    }
-
-    return (
-      <SectionComponent
-        key={key}
-        {...section}
-      />
-    );
-  };
+  const sectionComponents = {
+    executiveSummary: ExecutiveSummary,
+    marketSizeGrowth: MarketSizeGrowth,
+    targetUsers: TargetUsers,
+    competition: Competition,
+    unitEconomics: UnitEconomics,
+    revenueCalculator: RevenueCalculator,
+    marketingChannels: MarketingChannels,
+    goToMarketPlan: GoToMarketPlan,
+    vcSentiment: VCSentiment,
+    criticalThoughtQuestions: CriticalThoughtQuestions,
+    validationRoadmap: ValidationRoadmap,
+    keyPerformanceIndicators: KeyPerformanceIndicators,
+    experimentDesign: ExperimentDesign,
+    reportSummary: ReportSummary
+  } as const;
 
   return (
     <div className="space-y-8">
@@ -131,23 +123,41 @@ export function AnalysisDisplay({ analysis, isLoading, error, /* hideProgress */
       
       {/* Analysis Sections Rendering */}
       <div className="space-y-8">
-        {[
-          'executiveSummary',
-          'marketSizeGrowth',
-          'targetUsers',
-          'competition',
-          'unitEconomics',
-        ].map(key => renderSection(key, (analysis.sections as Record<string, BaseSectionResponse>)[key]))}
-        
-        <RevenueCalculator />
+        {sections.map(sectionKey => {
+          // Handle Revenue Calculator separately since it's not an analysis section
+          if (sectionKey === 'revenueCalculator') {
+            return (
+              <div key={sectionKey} className="mb-8">
+                <RevenueCalculator />
+              </div>
+            );
+          }
 
-        {[
-          'marketingChannels',
-          'goToMarketPlan',
-          'vcSentiment',
-          'criticalThoughtQuestions',
-          'reportSummary'
-        ].map(key => renderSection(key, (analysis.sections as Record<string, BaseSectionResponse>)[key]))}
+          // Type assertion to exclude 'revenueCalculator' from section keys
+          const section = analysis.sections?.[sectionKey as Exclude<typeof sectionKey, 'revenueCalculator'>] as BaseSectionResponse | undefined;
+          
+          if (!section || section.status !== 'completed') {
+            console.log(`[AnalysisDisplay] Skipping section ${sectionKey}:`, section);
+            return null;
+          }
+
+          const SectionComponent = sectionComponents[sectionKey];
+          if (!SectionComponent) {
+            console.warn(`No component found for section: ${sectionKey}`);
+            return null;
+          }
+
+          console.log(`[AnalysisDisplay] Rendering section ${sectionKey}`);
+          return (
+            <div key={sectionKey} className="mb-8">
+              {sectionKey === 'vcSentiment' ? (
+                <SectionComponent {...section} isLandingPage={false} />
+              ) : (
+                <SectionComponent {...section} />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import type { Database } from '@/types/supabase'
 import { checkSupabaseEnv } from '@/lib/supabase/env-check'
-import { supabaseConfig } from '@/lib/supabase/config'
 
 const SupabaseContext = createContext<ReturnType<typeof createClientComponentClient<Database>> | null>(null)
+
+// Helper to detect Safari browser
+const isSafari = typeof window !== 'undefined' && 
+  /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
 
 export const useSupabase = () => {
   const context = useContext(SupabaseContext)
@@ -22,112 +25,121 @@ export default function SupabaseProvider({
 }: {
   children: React.ReactNode
 }) {
-  const [error, setError] = useState<Error | null>(null)
-  const refreshAttempts = useRef(0)
-  const refreshTimeout = useRef<NodeJS.Timeout>()
-  const isRefreshing = useRef(false)
-  
-  // Create a single instance of the client
-  const [supabase] = useState(() => {
-    try {
-      checkSupabaseEnv()
-      return createClientComponentClient<Database>()
-    } catch (e) {
-      setError(e as Error)
-      return null
-    }
-  })
-
+  const [supabase] = useState(() => createClientComponentClient<Database>())
   const router = useRouter()
+  const refreshTokenTimer = useRef<NodeJS.Timeout>()
+  const isRefreshing = useRef(false)
+  const lastRefreshAttempt = useRef<number>(0)
 
-  // Exponential backoff for token refresh
-  const getBackoffDuration = useCallback(() => {
-    const base = 2000 // Base delay of 2 seconds
-    const maxDelay = 32000 // Max delay of 32 seconds
-    const jitter = Math.random() * 1000 // Random jitter up to 1 second
-    return Math.min(base * Math.pow(2, refreshAttempts.current) + jitter, maxDelay)
-  }, [])
-
-  // Debounced token refresh function
-  const refreshSession = useCallback(async () => {
-    if (!supabase || isRefreshing.current) return
-
+  // Function to handle session refresh
+  const refreshSession = useCallback(async (force = false) => {
+    // Prevent multiple rapid refresh attempts in Safari
+    const now = Date.now()
+    if (!force && isRefreshing.current) return
+    if (!force && isSafari && (now - lastRefreshAttempt.current) < 2000) return
+    
     try {
       isRefreshing.current = true
-      const { data, error } = await supabase.auth.refreshSession()
+      lastRefreshAttempt.current = now
+      console.log('[SessionProvider] Attempting to refresh session...')
+      
+      // Add cache-busting parameter for Safari
+      const options = isSafari ? {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'X-Timestamp': String(Date.now())
+        }
+      } : undefined;
+      
+      const { data: { session }, error } = await supabase.auth.getSession()
       
       if (error) {
-        console.warn('Session refresh failed:', error.message)
-        refreshAttempts.current += 1
-        
-        // Schedule another attempt with exponential backoff
-        if (refreshTimeout.current) {
-          clearTimeout(refreshTimeout.current)
+        console.error('[SessionProvider] Error refreshing session:', error)
+        // Clear any existing timer
+        if (refreshTokenTimer.current) {
+          clearTimeout(refreshTokenTimer.current)
         }
         
-        refreshTimeout.current = setTimeout(() => {
-          isRefreshing.current = false
-          refreshSession()
-        }, getBackoffDuration())
+        // If we get a 401 or refresh token error, redirect to signin
+        if (error.status === 401 || error.message.includes('refresh')) {
+          console.log('[SessionProvider] Session expired, redirecting to signin...')
+          await supabase.auth.signOut()
+          if (isSafari) {
+            // Force a clean reload for Safari
+            window.location.href = '/signin'
+          } else {
+            router.push('/signin')
+          }
+          return
+        }
         
         return
       }
 
-      // Success - reset attempts and refresh the page
-      refreshAttempts.current = 0
-      isRefreshing.current = false
-      if (data.session) {
-        router.refresh()
+      if (session) {
+        console.log('[SessionProvider] Session refreshed successfully')
+        // Schedule next refresh 5 minutes before token expiry
+        const expiresIn = (new Date(session.expires_at || 0).getTime() - Date.now()) - (5 * 60 * 1000)
+        if (refreshTokenTimer.current) {
+          clearTimeout(refreshTokenTimer.current)
+        }
+        refreshTokenTimer.current = setTimeout(() => refreshSession(true), Math.max(0, expiresIn))
       }
     } catch (e) {
-      console.error('Unexpected error during session refresh:', e)
+      console.error('[SessionProvider] Unexpected error during refresh:', e)
+    } finally {
       isRefreshing.current = false
     }
-  }, [supabase, router, getBackoffDuration])
+  }, [supabase, router])
 
   useEffect(() => {
-    if (!supabase) return
+    // Initial session check with force refresh for Safari
+    refreshSession(isSafari)
 
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'TOKEN_REFRESHED') {
-        // Token was refreshed successfully
-        refreshAttempts.current = 0
-        router.refresh()
-      } else if (event === 'SIGNED_OUT') {
-        // Clear any pending refresh attempts
-        if (refreshTimeout.current) {
-          clearTimeout(refreshTimeout.current)
+      console.log('[SessionProvider] Auth state changed:', event)
+      
+      if (event === 'SIGNED_OUT') {
+        // Clear refresh timer on signout
+        if (refreshTokenTimer.current) {
+          clearTimeout(refreshTokenTimer.current)
         }
-        refreshAttempts.current = 0
-        router.refresh()
-      } else if (!session) {
-        // No session - attempt refresh
-        await refreshSession()
+        if (isSafari) {
+          // Force a clean reload for Safari
+          window.location.reload()
+        } else {
+          router.refresh()
+        }
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // Refresh the router to update server-side auth state
+        if (isSafari) {
+          // Force a clean reload for Safari
+          window.location.reload()
+        } else {
+          router.refresh()
+        }
+        
+        // Schedule next refresh if we have a session
+        if (session) {
+          const expiresIn = (new Date(session.expires_at || 0).getTime() - Date.now()) - (5 * 60 * 1000)
+          if (refreshTokenTimer.current) {
+            clearTimeout(refreshTokenTimer.current)
+          }
+          refreshTokenTimer.current = setTimeout(() => refreshSession(true), Math.max(0, expiresIn))
+        }
       }
     })
 
     // Cleanup
     return () => {
       subscription?.unsubscribe()
-      if (refreshTimeout.current) {
-        clearTimeout(refreshTimeout.current)
+      if (refreshTokenTimer.current) {
+        clearTimeout(refreshTokenTimer.current)
       }
     }
   }, [supabase, router, refreshSession])
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="rounded-lg bg-red-50 p-4">
-          <h3 className="text-sm font-medium text-red-800">Configuration Error</h3>
-          <div className="mt-2 text-sm text-red-700">
-            {error.message}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   if (!supabase) {
     return null

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@contentful/rich-text-react-renderer": "^16.0.1",
     "@hookform/resolvers": "^3.3.4",
     "@next/third-parties": "^15.3.0",
     "@radix-ui/react-accordion": "^1.2.4",
@@ -38,6 +39,8 @@
     "ai": "^3.0.12",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "contentful": "^11.5.13",
+    "contentful-management": "^11.52.1",
     "dotenv": "^16.4.7",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",

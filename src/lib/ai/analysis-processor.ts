@@ -143,9 +143,9 @@ async function generateSectionContent(
         response = await callPerplexityAPI(prompt);
         break;
 
-      default:
-        // Use GPT-4 for general analysis
-        console.log(`[processAnalysis] Calling OpenAI GPT-4 for section: ${section}`);
+      case 'targetUsers':
+        // Add detailed logging for target users section
+        console.log(`[processAnalysis] Starting Target Users analysis with prompt:`, prompt);
         const gpt4Response = await openai.chat.completions.create({
           model: 'gpt-4-turbo-preview',
           messages: [{ role: 'user', content: prompt }],
@@ -153,6 +153,19 @@ async function generateSectionContent(
           max_tokens: 4000
         });
         response = gpt4Response.choices[0].message.content || '';
+        console.log(`[processAnalysis] Raw Target Users Response:`, response);
+        break;
+
+      default:
+        // Use GPT-4 for general analysis
+        console.log(`[processAnalysis] Calling OpenAI GPT-4 for section: ${section}`);
+        const defaultGpt4Response = await openai.chat.completions.create({
+          model: 'gpt-4-turbo-preview',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 4000
+        });
+        response = defaultGpt4Response.choices[0].message.content || '';
         console.log(`[processAnalysis] Received response from OpenAI GPT-4 for section: ${section}`);
         break;
     }
@@ -161,31 +174,48 @@ async function generateSectionContent(
     let parsedData: any;
     let extractedJsonString: string | null = null;
     try {
+      // Add specific logging for target users section
+      if (section === 'targetUsers') {
+        console.log('[processAnalysis] Target Users - Starting JSON extraction');
+      }
+      
       // 1. Check for markdown code block
       const markdownMatch = response.match(/```json\n?([\s\S]*?)\n?```/);
       if (markdownMatch && markdownMatch[1]) {
         extractedJsonString = markdownMatch[1].trim();
-        console.log(`[processAnalysis] Extracted JSON from markdown for section: ${section}`);
+        if (section === 'targetUsers') {
+          console.log('[processAnalysis] Target Users - Found JSON in markdown block:', extractedJsonString);
+        }
       } else {
         // 2. If no markdown, find first { and last }
         const firstBrace = response.indexOf('{');
         const lastBrace = response.lastIndexOf('}');
         if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
           extractedJsonString = response.substring(firstBrace, lastBrace + 1).trim();
-          console.log(`[processAnalysis] Extracted JSON substring for section: ${section}`);
+          if (section === 'targetUsers') {
+            console.log('[processAnalysis] Target Users - Extracted JSON substring:', extractedJsonString);
+          }
         } 
       }
 
       // 3. Attempt parsing if we extracted a potential JSON string
       if (extractedJsonString) {
         parsedData = JSON.parse(extractedJsonString);
-        console.log(`[processAnalysis] Successfully parsed extracted JSON for section: ${section}`);
+        if (section === 'targetUsers') {
+          console.log('[processAnalysis] Target Users - Parsed data structure:', JSON.stringify(parsedData, null, 2));
+        }
         
         // Check if the parsed data is an object with a single key matching the section name
         const keys = Object.keys(parsedData);
         if (keys.length === 1 && keys[0] === section && typeof parsedData[section] === 'object') {
-          console.log(`[processAnalysis] Unwrapping data for section: ${section}`);
+          if (section === 'targetUsers') {
+            console.log('[processAnalysis] Target Users - Unwrapping nested data structure');
+          }
           parsedData = parsedData[section]; // Extract the inner object
+        }
+
+        if (section === 'targetUsers') {
+          console.log('[processAnalysis] Target Users - Final data structure:', JSON.stringify(parsedData, null, 2));
         }
 
         if (section === 'executiveSummary') {

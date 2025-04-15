@@ -72,10 +72,14 @@ export async function POST(req: NextRequest) {
 
         // Start processing the analysis in the background
         console.log(`[analyze API] Attempting to start background processing for analysis ID: ${analysisId}`);
-        processAnalysis(analysisId, body, orchestrator).catch(error => {
-          console.error('[analyze API] Error during background processing initiation:', error);
-          orchestrator.updateAnalysisStatus(analysisId, 'failed')
-            .catch(err => console.error('[analyze API] Error updating analysis status after background error:', err));
+        
+        // Use Promise.resolve().then() to detach the promise chain from the request context
+        Promise.resolve().then(() => {
+          processAnalysis(analysisId, body, orchestrator).catch(error => {
+            console.error('[analyze API] Error during background processing initiation:', error);
+            orchestrator.updateAnalysisStatus(analysisId, 'failed')
+              .catch(err => console.error('[analyze API] Error updating analysis status after background error:', err));
+          });
         });
 
         console.log(`[analyze API] Successfully created analysis ID: ${analysisId}`);

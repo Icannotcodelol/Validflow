@@ -59,8 +59,8 @@ export async function processAnalysis(
     await orchestrator.updateAnalysisStatus(analysisId, 'processing');
     console.log(`[processAnalysis] Status updated to 'processing' for ID: ${analysisId}`);
 
-    // Process each section independently to ensure partial completion if interrupted
-    const sectionPromises = ANALYSIS_SECTIONS.map(async (section) => {
+    // Process each section sequentially
+    for (const section of ANALYSIS_SECTIONS) {
       try {
         console.log(`Processing section: ${section}`);
         
@@ -78,26 +78,10 @@ export async function processAnalysis(
         console.error(`Error processing section ${section}:`, error);
         await orchestrator.updateAnalysisSection(analysisId, section, null, 'failed');
       }
-    });
-
-    // Wait for all sections to complete
-    await Promise.allSettled(sectionPromises);
-
-    // Check if any sections failed
-    const analysis = await orchestrator.getAnalysis(analysisId);
-    if (!analysis) {
-      throw new Error('Analysis not found after processing sections');
     }
 
-    const hasFailed = Object.entries(analysis.sections || {}).some(
-      ([_, section]) => section?.status === 'failed'
-    );
-
     // Update final status
-    await orchestrator.updateAnalysisStatus(
-      analysisId, 
-      hasFailed ? 'failed' : 'completed'
-    );
+    await orchestrator.updateAnalysisStatus(analysisId, 'completed');
   } catch (error) {
     console.error('Error in processAnalysis:', error);
     await orchestrator.updateAnalysisStatus(analysisId, 'failed');

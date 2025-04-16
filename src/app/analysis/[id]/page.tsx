@@ -12,8 +12,7 @@ export default function AnalysisPage() {
   const id = params?.id as string;
   const [analysis, setAnalysis] = useState<AnalysisDocument | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentSection, setCurrentSection] = useState<string>();
-  const [completedSections, setCompletedSections] = useState<string[]>([]);
+  const [error, setError] = useState<string | undefined>(undefined);
   const pollIntervalRef = useRef<NodeJS.Timeout>();
 
   // Function to stop polling
@@ -24,89 +23,51 @@ export default function AnalysisPage() {
     }
   };
 
-  // Function to check if all sections are complete
-  const areAllSectionsComplete = (data: any) => {
-    if (!data?.sections) return false;
-    
-    const requiredSections = [
-      'executiveSummary',
-      'marketSizeGrowth',
-      'targetUsers',
-      'competition',
-      'unitEconomics',
-      'marketingChannels',
-      'goToMarketPlan',
-      'vcSentiment',
-      'criticalThoughtQuestions',
-      'validationRoadmap',
-      'keyPerformanceIndicators',
-      'experimentDesign',
-      'reportSummary'
-    ];
-
-    return requiredSections.every(section => 
-      data.sections[section]?.status === 'completed' || 
-      data.sections[section]?.status === 'failed'
-    );
-  };
-
   useEffect(() => {
     const fetchAnalysis = async () => {
       try {
         if (!id) {
-          console.error('No analysis ID provided');
+          setError('No analysis ID provided');
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch(`/api/analyze?analysisId=${id}`, {
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (response.status === 401) {
+          setError('Authentication error');
           setIsLoading(false);
           stopPolling();
           return;
         }
 
-        const response = await fetch(`/api/analyze?analysisId=${id}`);
         const data = await response.json();
         
         if (!response.ok) {
           throw new Error(data.message || data.error || 'Failed to fetch analysis');
         }
 
-        // Ensure we're accessing the correct data structure
         const analysisData = data.analysis || data;
 
-        // Update progress tracking
-        if (analysisData.sections) {
-          const completed: string[] = [];
-          let current: string | undefined;
-          
-          Object.entries(analysisData.sections).forEach(([key, section]: [string, any]) => {
-            if (section?.status === 'completed') {
-              completed.push(key);
-            } else if (section?.status === 'pending' && !current) {
-              current = key;
-            }
-          });
-
-          console.log('Progress Update:', {
-            completed,
-            current,
-            totalSections: Object.keys(analysisData.sections).length,
-            allComplete: areAllSectionsComplete(analysisData)
-          });
-          
-          setCompletedSections(completed);
-          setCurrentSection(current);
-        }
-
-        // Only update analysis and stop loading when all sections are complete
-        if (areAllSectionsComplete(analysisData)) {
-          console.log('All sections complete, stopping polling');
-          setAnalysis(analysisData);
+        // Update analysis state regardless of completion
+        setAnalysis(analysisData);
+        
+        // Only stop loading when the analysis is complete or failed
+        if (analysisData.status === 'completed' || analysisData.status === 'failed') {
           setIsLoading(false);
           stopPolling();
         } else {
-          // Keep the previous analysis state but continue polling
-          setAnalysis(prev => prev || analysisData);
+          // Continue polling while processing
           pollIntervalRef.current = setTimeout(fetchAnalysis, 2000);
         }
       } catch (error) {
         console.error('Error fetching analysis:', error);
+        setError(error instanceof Error ? error.message : 'An error occurred');
         setIsLoading(false);
         stopPolling();
       }
@@ -119,41 +80,40 @@ export default function AnalysisPage() {
     };
   }, [id]);
 
-  if (isLoading || !analysis || !areAllSectionsComplete(analysis)) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto py-8 px-4 mt-16">
-          <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-            <AnalysisLoadingState
-              currentSection={currentSection}
-              completedSections={completedSections}
-            />
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (!analysis) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto py-8 px-4 mt-16">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold mb-2">Analysis not found</h2>
-            <p className="text-sm text-muted-foreground">The requested analysis could not be found.</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto py-8 px-4 mt-16">
-        <AnalysisDisplay analysis={analysis} />
+        {error ? (
+          <div className="text-center text-red-500">
+            <h2 className="text-xl font-semibold mb-2">Error</h2>
+            <p className="text-sm">{error}</p>
+          </div>
+        ) : (
+          <>
+            {/* Always show the loading state while processing */}
+            {(isLoading || analysis?.status === 'processing') && (
+              <div className="mb-8">
+                <AnalysisLoadingState
+                  currentSection={Object.entries(analysis?.sections || {})
+                    .find(([_, section]) => (section as BaseSectionResponse)?.status === 'pending')?.[0]}
+                  completedSections={Object.entries(analysis?.sections || {})
+                    .filter(([_, section]) => (section as BaseSectionResponse)?.status === 'completed')
+                    .map(([key]) => key)}
+                />
+              </div>
+            )}
+            
+            {/* Show analysis display as soon as we have any data */}
+            {analysis && (
+              <AnalysisDisplay
+                analysis={analysis}
+                isLoading={isLoading}
+                error={error}
+              />
+            )}
+          </>
+        )}
       </main>
     </div>
   );

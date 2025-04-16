@@ -21,65 +21,17 @@ import RevenueCalculator from "./tools/RevenueCalculator";
 
 interface AnalysisDisplayProps {
   analysis: AnalysisDocument;
-  isLoading?: boolean;
+  isLoading: boolean;
   error?: string;
-  hideProgress?: boolean;
 }
 
-export function AnalysisDisplay({ analysis, isLoading, error, /* hideProgress */ }: AnalysisDisplayProps) {
-  console.log('[AnalysisDisplay] Rendering with analysis:', {
-    status: analysis.status,
-    sections: Object.keys(analysis.sections || {}),
-    completedSections: Object.entries(analysis.sections || {})
-      .filter(([_, section]) => (section as BaseSectionResponse)?.status === 'completed')
-      .map(([key]) => key)
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-red-500">{error}</div>
-      </div>
-    );
-  }
-
-  // Keep console.log for development debugging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Raw sections data:', JSON.stringify(analysis.sections, null, 2));
-  }
-
-  const sections = [
-    'executiveSummary',
-    'marketSizeGrowth',
-    'targetUsers',
-    'competition',
-    'unitEconomics',
-    'revenueCalculator',
-    'marketingChannels',
-    'goToMarketPlan',
-    'vcSentiment',
-    'criticalThoughtQuestions',
-    'validationRoadmap',
-    'keyPerformanceIndicators',
-    'experimentDesign',
-    'reportSummary'
-  ] as const;
-
+export function AnalysisDisplay({ analysis, isLoading, error }: AnalysisDisplayProps) {
   const sectionComponents = {
     executiveSummary: ExecutiveSummary,
     marketSizeGrowth: MarketSizeGrowth,
     targetUsers: TargetUsers,
     competition: Competition,
     unitEconomics: UnitEconomics,
-    revenueCalculator: RevenueCalculator,
     marketingChannels: MarketingChannels,
     goToMarketPlan: GoToMarketPlan,
     vcSentiment: VCSentiment,
@@ -90,75 +42,81 @@ export function AnalysisDisplay({ analysis, isLoading, error, /* hideProgress */
     reportSummary: ReportSummary
   } as const;
 
+  // Define the order of sections as they should appear
+  const sectionOrder = [
+    'executiveSummary',
+    'marketSizeGrowth',
+    'targetUsers',
+    'competition',
+    'unitEconomics',
+    'marketingChannels',
+    'goToMarketPlan',
+    'vcSentiment',
+    'criticalThoughtQuestions',
+    'validationRoadmap',
+    'keyPerformanceIndicators',
+    'experimentDesign',
+    'reportSummary'
+  ] as const;
+
+  // Filter completed sections and sort them according to sectionOrder
+  const completedSections = sectionOrder.filter(sectionKey => 
+    (analysis.sections?.[sectionKey] as BaseSectionResponse)?.status === 'completed'
+  );
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      {/* Comment out or remove the entire progress section */}
-      {/* 
-      {!hideProgress && (
-        <div className="flex justify-between items-center mb-6 p-4 bg-card border rounded-lg shadow-sm">
-          <AnalysisProgress analysis={analysis} />
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => exportToPDF(analysis)}>
-                Export as PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportToCSV(analysis)}>
-                Export as CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportToJSON(analysis)}>
-                Export as JSON
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <div className="max-w-4xl mx-auto">
+      {completedSections.length === 0 && isLoading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
         </div>
-      )}
-      */}
-      
-      {/* Analysis Sections Rendering */}
-      <div className="space-y-8">
-        {sections.map(sectionKey => {
-          // Handle Revenue Calculator separately since it's not an analysis section
-          if (sectionKey === 'revenueCalculator') {
+      ) : (
+        <div className="space-y-8">
+          {/* Show a message if analysis has started but no sections are complete yet */}
+          {completedSections.length === 0 && (
+            <div className="text-center p-4">
+              <h2 className="text-xl font-semibold mb-2">Analysis in Progress</h2>
+              <p className="text-sm text-muted-foreground">The first results will appear here as soon as they're ready.</p>
+            </div>
+          )}
+          
+          {/* Render completed sections in order */}
+          {completedSections.map(sectionKey => {
+            const section = analysis.sections?.[sectionKey] as BaseSectionResponse;
+            const SectionComponent = sectionComponents[sectionKey];
+
+            if (!SectionComponent) {
+              console.warn(`No component found for section: ${sectionKey}`);
+              return null;
+            }
+
             return (
-              <div key={sectionKey} className="mb-8">
-                <RevenueCalculator />
+              <div key={sectionKey} className="mb-8 animate-fadeIn">
+                {sectionKey === 'vcSentiment' ? (
+                  <SectionComponent {...section} isLandingPage={false} />
+                ) : (
+                  <SectionComponent {...section} />
+                )}
               </div>
             );
-          }
+          })}
 
-          // Type assertion to exclude 'revenueCalculator' from section keys
-          const section = analysis.sections?.[sectionKey as Exclude<typeof sectionKey, 'revenueCalculator'>] as BaseSectionResponse | undefined;
-          
-          if (!section || section.status !== 'completed') {
-            console.log(`[AnalysisDisplay] Skipping section ${sectionKey}:`, section);
-            return null;
-          }
-
-          const SectionComponent = sectionComponents[sectionKey];
-          if (!SectionComponent) {
-            console.warn(`No component found for section: ${sectionKey}`);
-            return null;
-          }
-
-          console.log(`[AnalysisDisplay] Rendering section ${sectionKey}`);
-          return (
-            <div key={sectionKey} className="mb-8">
-              {sectionKey === 'vcSentiment' ? (
-                <SectionComponent {...section} isLandingPage={false} />
-              ) : (
-                <SectionComponent {...section} />
-              )}
+          {/* Show loading indicator for next section if analysis is still in progress */}
+          {(analysis as AnalysisDocument).status === 'processing' && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900" />
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 } 

@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import type { Database } from '@/types/supabase';
 import { processAnalysis } from '@/lib/ai/analysis-processor';
 import { createClient } from '@/lib/supabase/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -130,11 +131,12 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createServerComponentClient<Database>({ cookies });
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user?.id) {
-      console.error('Auth error:', userError);
+    // Use RouteHandlerClient instead of ServerComponentClient
+    const supabase = createRouteHandlerClient<Database>({ cookies });
+    
+    // Verify session exists
+    const session = await supabase.auth.getSession();
+    if (!session.data.session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -156,6 +158,11 @@ export async function GET(req: NextRequest) {
         success: false,
         message: 'Analysis not found'
       }, { status: 404 });
+    }
+
+    // Verify user owns this analysis
+    if (analysis.user_id !== session.data.session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json({

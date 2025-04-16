@@ -46,6 +46,40 @@ async function callPerplexityAPI(prompt: string) {
   }
 }
 
+// Define section dependencies for parallel processing
+const SECTION_DEPENDENCIES: Record<typeof ANALYSIS_SECTIONS[number], string[]> = {
+  executiveSummary: [],
+  marketSizeGrowth: [],
+  targetUsers: [],
+  competition: ['marketSizeGrowth'],
+  unitEconomics: ['marketSizeGrowth', 'competition'],
+  marketingChannels: ['targetUsers', 'competition'],
+  goToMarketPlan: ['marketingChannels', 'unitEconomics'],
+  vcSentiment: ['marketSizeGrowth', 'competition'],
+  criticalThoughtQuestions: ['executiveSummary', 'marketSizeGrowth'],
+  validationRoadmap: ['criticalThoughtQuestions'],
+  keyPerformanceIndicators: ['unitEconomics', 'marketingChannels'],
+  experimentDesign: ['validationRoadmap'],
+  reportSummary: ['executiveSummary', 'criticalThoughtQuestions']
+};
+
+// Optimized token limits per section
+const TOKEN_LIMITS: Record<typeof ANALYSIS_SECTIONS[number], number> = {
+  executiveSummary: 2000,
+  marketSizeGrowth: 3000,
+  targetUsers: 2000,
+  competition: 2500,
+  unitEconomics: 3000,
+  marketingChannels: 2500,
+  goToMarketPlan: 3000,
+  vcSentiment: 2000,
+  criticalThoughtQuestions: 3000,
+  validationRoadmap: 2500,
+  keyPerformanceIndicators: 2000,
+  experimentDesign: 2500,
+  reportSummary: 2000
+};
+
 export async function processAnalysis(
   analysisId: string,
   formData: AnalysisFormData,
@@ -53,35 +87,71 @@ export async function processAnalysis(
 ): Promise<void> {
   console.log(`[processAnalysis] Starting background processing for analysis ID: ${analysisId}`);
   console.log(`[processAnalysis] Received form data:`, formData);
+  
   try {
     console.log(`[processAnalysis] Updating status to 'processing' for ID: ${analysisId}`);
-    // Update status to processing
     await orchestrator.updateAnalysisStatus(analysisId, 'processing');
     console.log(`[processAnalysis] Status updated to 'processing' for ID: ${analysisId}`);
 
-    // Process each section sequentially
-    for (const section of ANALYSIS_SECTIONS) {
-      try {
-        console.log(`Processing section: ${section}`);
-        
-        // Mark section as pending
-        await orchestrator.updateAnalysisSection(analysisId, section, null, 'pending');
+    // Track completed sections
+    const completed = new Set<string>();
+    
+    // Process sections in parallel based on dependencies
+    while (completed.size < ANALYSIS_SECTIONS.length) {
+      // Find sections that are ready to process (all dependencies completed)
+      const readySections = ANALYSIS_SECTIONS.filter(section => 
+        !completed.has(section) && 
+        SECTION_DEPENDENCIES[section].every(dep => completed.has(dep))
+      );
 
-        // Generate section content
-        const sectionData = await generateSectionContent(section, formData);
-
-        // Update section with generated content
-        await orchestrator.updateAnalysisSection(analysisId, section, sectionData, 'completed');
-        
-        console.log(`Completed section: ${section}`);
-      } catch (error) {
-        console.error(`Error processing section ${section}:`, error);
-        await orchestrator.updateAnalysisSection(analysisId, section, null, 'failed');
+      if (readySections.length === 0) {
+        if (completed.size < ANALYSIS_SECTIONS.length) {
+          console.error(`[processAnalysis] Deadlock detected. Completed: ${completed.size}/${ANALYSIS_SECTIONS.length}`);
+          throw new Error('Processing deadlock detected');
+        }
+        break;
       }
+
+      console.log(`[processAnalysis] Processing batch of ${readySections.length} sections in parallel:`, readySections);
+
+      // Process the ready sections in parallel
+      const results = await Promise.allSettled(
+        readySections.map(async section => {
+          try {
+            console.log(`[processAnalysis] Starting section: ${section}`);
+            await orchestrator.updateAnalysisSection(analysisId, section, null, 'pending');
+            
+            const sectionData = await generateSectionContent(section, formData);
+            await orchestrator.updateAnalysisSection(analysisId, section, sectionData, 'completed');
+            
+            console.log(`[processAnalysis] Completed section: ${section}`);
+            completed.add(section);
+            
+            return { section, status: 'completed' };
+          } catch (error) {
+            console.error(`[processAnalysis] Error in section ${section}:`, error);
+            await orchestrator.updateAnalysisSection(analysisId, section, null, 'failed');
+            throw error;
+          }
+        })
+      );
+
+      // Log results of the batch
+      results.forEach((result, index) => {
+        const section = readySections[index];
+        if (result.status === 'fulfilled') {
+          console.log(`[processAnalysis] Section ${section} processed successfully`);
+        } else {
+          console.error(`[processAnalysis] Section ${section} failed:`, result.reason);
+        }
+      });
     }
 
     // Update final status
-    await orchestrator.updateAnalysisStatus(analysisId, 'completed');
+    const allSuccessful = ANALYSIS_SECTIONS.every(section => completed.has(section));
+    await orchestrator.updateAnalysisStatus(analysisId, allSuccessful ? 'completed' : 'failed');
+    
+    console.log(`[processAnalysis] Analysis completed with status: ${allSuccessful ? 'completed' : 'failed'}`);
   } catch (error) {
     console.error('Error in processAnalysis:', error);
     await orchestrator.updateAnalysisStatus(analysisId, 'failed');
@@ -110,6 +180,7 @@ async function generateSectionContent(
   formData: AnalysisFormData
 ): Promise<any> {
   const prompt = generatePromptForSection(section, formData);
+  const maxTokens = TOKEN_LIMITS[section];
   
   try {
     let response: string;
@@ -123,7 +194,7 @@ async function generateSectionContent(
         // Use Claude for strategic analysis
         const claudeResponse = await anthropic.messages.create({
           model: 'claude-3-opus-20240229',
-          max_tokens: 4000,
+          max_tokens: maxTokens,
           messages: [{ role: 'user', content: prompt }],
         });
         if (claudeResponse.content && claudeResponse.content.length > 0 && claudeResponse.content[0].type === 'text') {
@@ -150,7 +221,7 @@ async function generateSectionContent(
           model: 'gpt-4-turbo-preview',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.7,
-          max_tokens: 4000
+          max_tokens: maxTokens
         });
         response = gpt4Response.choices[0].message.content || '';
         console.log(`[processAnalysis] Raw Target Users Response:`, response);
@@ -163,7 +234,8 @@ async function generateSectionContent(
           model: 'gpt-4-turbo-preview',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.7,
-          max_tokens: 4000
+          max_tokens: maxTokens,
+          response_format: { type: 'json_object' }
         });
         response = defaultGpt4Response.choices[0].message.content || '';
         console.log(`[processAnalysis] Received response from OpenAI GPT-4 for section: ${section}`);

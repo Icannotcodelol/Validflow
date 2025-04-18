@@ -3,6 +3,7 @@ import { UnitEconomicsData } from "@/types/sections";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Info } from "lucide-react";
+import RevenueCalculator from "@/components/tools/RevenueCalculator";
 
 interface UnitEconomicsProps {
   data?: UnitEconomicsData;
@@ -206,6 +207,11 @@ function UnitEconomicsContent({ data, status, error }: UnitEconomicsProps) {
                 </div>
               </div>
             )}
+
+            <div>
+              <h3 className="font-semibold mb-4">Revenue Calculator</h3>
+              <RevenueCalculator />
+            </div>
           </div>
         </CardContent>
       </Card>

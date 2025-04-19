@@ -3,42 +3,42 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Header from "@/components/Header"
-import ExecutiveSummary from "@/components/dashboard/ExecutiveSummary"
-import RadarChartSection from "@/components/dashboard/RadarChartSection"
-import StrengthsWeaknesses from "@/components/dashboard/StrengthsWeaknesses"
-import MarketOpportunity from "@/components/dashboard/MarketOpportunity"
-import VCActivity from "@/components/dashboard/VCActivity"
-import ConsumerBehavior from "@/components/dashboard/ConsumerBehavior"
-import CompetitiveLandscape from "@/components/dashboard/CompetitiveLandscape"
-import FinancialProjections from "@/components/dashboard/FinancialProjections"
-import GoToMarketStrategy from "@/components/dashboard/GoToMarketStrategy"
-import RiskAssessment from "@/components/dashboard/RiskAssessment"
-import BarriersToEntry from "@/components/dashboard/BarriersToEntry"
-import { sampleAnalysisResult } from "@/utils/sample-data"
-import { AnalysisResult } from "@/types/dashboard"
 import { AnalysisLoadingState } from "@/components/AnalysisLoadingState"
+import VerdictOverview from "@/components/dashboard/VerdictOverview"
+import DimensionAnalysis from "@/components/dashboard/DimensionAnalysis"
+
+interface KeyFinding {
+  type: "strength" | "warning" | "weakness"
+  text: string
+}
+
+interface DimensionScore {
+  name: string
+  score: number
+  rating: string
+  description: string
+  keyInsights: { text: string }[]
+}
+
+interface AnalysisData {
+  score: number
+  verdict: string
+  title: string
+  summary: string
+  findings: KeyFinding[]
+  submissionDate: string
+  dimensions: DimensionScore[]
+  sections: Record<string, { status: string }>
+}
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisData | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentSection, setCurrentSection] = useState<string>()
   const [completedSections, setCompletedSections] = useState<string[]>([])
 
   useEffect(() => {
-    // In development, use sample data
-    if (process.env.NODE_ENV === 'development') {
-      const result: AnalysisResult = {
-        marketResearch: sampleAnalysisResult.marketResearch,
-        analysis: sampleAnalysisResult.analysis,
-        content: sampleAnalysisResult.content,
-        sections: sampleAnalysisResult.sections
-      }
-      setAnalysisResult(result)
-      setLoading(false)
-      return
-    }
-
     // In production, load from localStorage and track progress
     const result = localStorage.getItem('analysisResult')
     if (!result) {
@@ -101,61 +101,23 @@ export default function DashboardPage() {
     )
   }
 
-  const { content, marketResearch, analysis } = analysisResult
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto py-8 px-4 mt-16 space-y-12">
-        <ExecutiveSummary data={content} />
+        <VerdictOverview
+          score={analysisResult.score}
+          verdict={analysisResult.verdict}
+          title={analysisResult.title}
+          summary={analysisResult.summary}
+          findings={analysisResult.findings}
+          submissionDate={analysisResult.submissionDate}
+        />
         
         <div className="space-y-12">
           <section>
-            <h2 className="text-2xl font-semibold mb-6">Analysis</h2>
-            <RadarChartSection data={analysis} />
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Strengths & Weaknesses</h2>
-            <StrengthsWeaknesses data={analysis} />
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Market</h2>
-            <MarketOpportunity data={marketResearch} />
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Barriers to Entry</h2>
-            <BarriersToEntry data={marketResearch.marketDynamics} />
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Insights</h2>
-            <div className="space-y-8">
-              <ConsumerBehavior data={marketResearch.demographics} />
-              <VCActivity data={{ trends: marketResearch.trends, vcActivity: marketResearch.vcActivity }} />
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Competition</h2>
-            <CompetitiveLandscape data={marketResearch.competitors} />
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Financial</h2>
-            <FinancialProjections data={analysis.detailedAnalysis.financialAnalysis} />
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Go-To-Market</h2>
-            <GoToMarketStrategy data={analysis.detailedAnalysis.implementationPlan} />
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Risks</h2>
-            <RiskAssessment data={analysis.detailedAnalysis.riskAssessment} />
+            <h2 className="text-2xl font-semibold mb-6">Analysis Dimensions</h2>
+            <DimensionAnalysis dimensions={analysisResult.dimensions} />
           </section>
         </div>
       </main>

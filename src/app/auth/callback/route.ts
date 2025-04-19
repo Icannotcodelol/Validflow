@@ -29,11 +29,13 @@ export async function GET(request: Request) {
     }
 
     // URL to redirect to after sign in process completes
-    const redirectUrl = new URL(redirectTo, requestUrl.origin)
+    const baseUrl = process.env.NODE_ENV === 'production' ? 'https://validflow.io' : requestUrl.origin
+    const redirectUrl = new URL(redirectTo, baseUrl)
     console.log('[Auth Callback] Final redirect URL:', redirectUrl.toString())
     return NextResponse.redirect(redirectUrl)
   } catch (error) {
     console.error('[Auth Callback] Error in callback:', error)
-    return NextResponse.redirect(new URL('/signin', request.url))
+    const baseUrl = process.env.NODE_ENV === 'production' ? 'https://validflow.io' : request.url
+    return NextResponse.redirect(new URL('/signin', baseUrl))
   }
 } 

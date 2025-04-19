@@ -23,7 +23,7 @@ export default function SignUpPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: `${process.env.NODE_ENV === 'production' ? 'https://validflow.io' : window.location.origin}/auth/callback`
       }
     });
 

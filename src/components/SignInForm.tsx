@@ -8,10 +8,11 @@ export default function SignInForm({ redirectTo = '/' }: { redirectTo?: string }
 
   const handleSignIn = async () => {
     try {
+      const baseUrl = process.env.NODE_ENV === 'production' ? 'https://validflow.io' : window.location.origin
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?redirectTo=${redirectTo}`
+          redirectTo: `${baseUrl}/auth/callback?redirectTo=${redirectTo}`
         }
       })
       

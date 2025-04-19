@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/supabase';
+import { Analysis } from '@/types/analysis';
 import { BaseSectionResponse } from './models';
 
 type AnalysisDocument = Database['public']['Tables']['analyses']['Row']
@@ -185,6 +186,27 @@ export class Orchestrator {
       }
     } catch (error) {
       console.error('Error in markFreeAnalysisUsed:', error);
+      throw error;
+    }
+  }
+
+  async getUserAnalyses(userId: string): Promise<Analysis[]> {
+    console.log(`[Orchestrator] Fetching analyses for user ID: ${userId}`);
+    try {
+      const { data, error } = await this.supabase
+        .from('analyses')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[Orchestrator] Supabase error fetching analyses:', error);
+        throw new Error(`Failed to fetch analyses: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('[Orchestrator] Error caught in getUserAnalyses:', error);
       throw error;
     }
   }

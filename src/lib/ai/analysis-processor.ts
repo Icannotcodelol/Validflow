@@ -332,6 +332,7 @@ function generatePromptForSection(
     Pricing Model: ${formData.pricingModel}
     Current Stage: ${formData.currentStage}
     Team Composition: ${formData.teamComposition}
+    Submission Date: ${formData.submissionDate}
     ${formData.additionalInfo ? `Additional Info: ${formData.additionalInfo}` : ''}
   `.trim();
 

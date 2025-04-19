@@ -2,167 +2,162 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSupabase } from "@/components/providers/SessionProvider"
 import Header from "@/components/Header"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Loader2 } from "lucide-react"
-
-interface Analysis {
-  id: string
-  created_at: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  sections: {
-    executiveSummary?: {
-      status: string
-      title?: string
-      verdict?: string
-      score?: number
-    }
-    formData?: {
-      description: string
-      industry: string
-    }
-  }
-}
+import ExecutiveSummary from "@/components/dashboard/ExecutiveSummary"
+import RadarChartSection from "@/components/dashboard/RadarChartSection"
+import StrengthsWeaknesses from "@/components/dashboard/StrengthsWeaknesses"
+import MarketOpportunity from "@/components/dashboard/MarketOpportunity"
+import VCActivity from "@/components/dashboard/VCActivity"
+import ConsumerBehavior from "@/components/dashboard/ConsumerBehavior"
+import CompetitiveLandscape from "@/components/dashboard/CompetitiveLandscape"
+import FinancialProjections from "@/components/dashboard/FinancialProjections"
+import GoToMarketStrategy from "@/components/dashboard/GoToMarketStrategy"
+import RiskAssessment from "@/components/dashboard/RiskAssessment"
+import BarriersToEntry from "@/components/dashboard/BarriersToEntry"
+import { sampleAnalysisResult } from "@/utils/sample-data"
+import { AnalysisResult } from "@/types/dashboard"
+import { AnalysisLoadingState } from "@/components/AnalysisLoadingState"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const supabase = useSupabase()
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(true)
-  const [analyses, setAnalyses] = useState<Analysis[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [currentSection, setCurrentSection] = useState<string>()
+  const [completedSections, setCompletedSections] = useState<string[]>([])
 
   useEffect(() => {
-    const fetchAnalyses = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session) {
-          router.push('/signin?redirectTo=/dashboard')
-          return
-        }
-
-        const { data, error } = await supabase
-          .from('analyses')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
-
-        setAnalyses(data || [])
-      } catch (error) {
-        console.error('Error fetching analyses:', error)
-        setError(error instanceof Error ? error.message : 'Failed to load analyses')
-      } finally {
-        setLoading(false)
+    // In development, use sample data
+    if (process.env.NODE_ENV === 'development') {
+      const result: AnalysisResult = {
+        marketResearch: sampleAnalysisResult.marketResearch,
+        analysis: sampleAnalysisResult.analysis,
+        content: sampleAnalysisResult.content,
+        sections: sampleAnalysisResult.sections
       }
+      setAnalysisResult(result)
+      setLoading(false)
+      return
     }
 
-    fetchAnalyses()
-  }, [supabase, router])
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge className="bg-green-500">Completed</Badge>
-      case 'processing':
-        return <Badge className="bg-blue-500">Processing</Badge>
-      case 'pending':
-        return <Badge className="bg-yellow-500">Pending</Badge>
-      case 'failed':
-        return <Badge className="bg-red-500">Failed</Badge>
-      default:
-        return <Badge className="bg-gray-500">Unknown</Badge>
+    // In production, load from localStorage and track progress
+    const result = localStorage.getItem('analysisResult')
+    if (!result) {
+      router.push('/validate')
+      return
     }
-  }
+    
+    try {
+      const parsed = JSON.parse(result)
+      
+      // Update progress based on sections status
+      if (parsed.sections) {
+        const completed: string[] = []
+        let current: string | undefined
+        
+        Object.entries(parsed.sections).forEach(([key, section]: [string, any]) => {
+          if (section?.status === 'completed') {
+            completed.push(key)
+          } else if (section?.status === 'pending' && !current) {
+            current = key
+          }
+        })
+        
+        setCompletedSections(completed)
+        setCurrentSection(current)
+      }
+      
+      setAnalysisResult(parsed)
+      setLoading(false)
+    } catch (e) {
+      console.error('Error parsing analysis result:', e)
+      router.push('/validate')
+    }
+  }, [router])
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto py-8 px-4 mt-16">
-          <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-            <Loader2 className="h-8 w-8 animate-spin" />
+          <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+            <AnalysisLoadingState
+              currentSection={currentSection}
+              completedSections={completedSections}
+            />
           </div>
         </main>
       </div>
     )
   }
 
+  if (!analysisResult) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Loading analysis data...</h2>
+          <p className="text-sm text-muted-foreground">Please wait while we prepare your results.</p>
+        </div>
+      </div>
+    )
+  }
+
+  const { content, marketResearch, analysis } = analysisResult
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto py-8 px-4 mt-16">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Your Analyses</h1>
-          <Button onClick={() => router.push('/validate')}>
-            New Analysis
-          </Button>
-        </div>
+      <main className="container mx-auto py-8 px-4 mt-16 space-y-12">
+        <ExecutiveSummary data={content} />
+        
+        <div className="space-y-12">
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Analysis</h2>
+            <RadarChartSection data={analysis} />
+          </section>
 
-        {error ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-red-500">{error}</div>
-            </CardContent>
-          </Card>
-        ) : analyses.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-8">
-                <h3 className="text-lg font-medium mb-2">No analyses yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start by creating your first analysis
-                </p>
-                <Button onClick={() => router.push('/validate')}>
-                  Create Analysis
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {analyses.map((analysis) => (
-              <Card key={analysis.id} className="cursor-pointer hover:bg-accent/50 transition-colors"
-                    onClick={() => router.push(`/analysis/${analysis.id}`)}>
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="mb-1">
-                        {analysis.sections?.executiveSummary?.title || 
-                         analysis.sections?.formData?.industry || 
-                         'Untitled Analysis'}
-                      </CardTitle>
-                      <CardDescription>
-                        {analysis.sections?.formData?.description?.slice(0, 150)}
-                        {analysis.sections?.formData?.description && analysis.sections.formData.description.length > 150 ? '...' : ''}
-                      </CardDescription>
-                    </div>
-                    {getStatusBadge(analysis.status)}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex justify-between items-center text-sm text-muted-foreground">
-                    <div>
-                      Created {new Date(analysis.created_at).toLocaleDateString()}
-                    </div>
-                    {analysis.sections?.executiveSummary?.score && (
-                      <div className="flex items-center gap-2">
-                        <span>Score:</span>
-                        <span className="font-medium">
-                          {analysis.sections.executiveSummary.score}/100
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Strengths & Weaknesses</h2>
+            <StrengthsWeaknesses data={analysis} />
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Market</h2>
+            <MarketOpportunity data={marketResearch} />
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Barriers to Entry</h2>
+            <BarriersToEntry data={marketResearch.marketDynamics} />
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Insights</h2>
+            <div className="space-y-8">
+              <ConsumerBehavior data={marketResearch.demographics} />
+              <VCActivity data={{ trends: marketResearch.trends, vcActivity: marketResearch.vcActivity }} />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Competition</h2>
+            <CompetitiveLandscape data={marketResearch.competitors} />
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Financial</h2>
+            <FinancialProjections data={analysis.detailedAnalysis.financialAnalysis} />
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Go-To-Market</h2>
+            <GoToMarketStrategy data={analysis.detailedAnalysis.implementationPlan} />
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold mb-6">Risks</h2>
+            <RiskAssessment data={analysis.detailedAnalysis.riskAssessment} />
+          </section>
+        </div>
       </main>
     </div>
   )

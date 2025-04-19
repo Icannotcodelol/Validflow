@@ -241,6 +241,7 @@ export default function ValidatePage() {
         },
         body: JSON.stringify({
           ...formData,
+          submissionDate: new Date().toISOString(),
           userId: user!.id,
         }),
       });

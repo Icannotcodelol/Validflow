@@ -23,7 +23,7 @@ export default function TestPaymentPage() {
           <div className="space-y-6">
             <div className="rounded-md bg-muted p-4">
               <h2 className="mb-2 text-lg font-semibold">Buy Credits</h2>
-              <p className="mb-4 text-sm text-muted-foreground">100 credits for €9.99</p>
+              <p className="mb-4 text-sm text-muted-foreground">100 credits for €3.99</p>
               <StripeCheckout
                 priceId={process.env.NEXT_PUBLIC_STRIPE_CREDIT_PRICE_ID!}
                 type="credits"
@@ -34,7 +34,7 @@ export default function TestPaymentPage() {
 
             <div className="rounded-md bg-muted p-4">
               <h2 className="mb-2 text-lg font-semibold">Unlimited Subscription</h2>
-              <p className="mb-4 text-sm text-muted-foreground">€99.99/month for unlimited access</p>
+              <p className="mb-4 text-sm text-muted-foreground">€39.99/month for unlimited access</p>
               <StripeCheckout
                 priceId={process.env.NEXT_PUBLIC_STRIPE_UNLIMITED_PRICE_ID!}
                 type="unlimited"

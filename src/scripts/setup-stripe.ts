@@ -18,7 +18,7 @@ async function createProducts() {
 
     const singleAnalysisPrice = await stripe.prices.create({
       product: singleAnalysisProduct.id,
-      unit_amount: 999, // 9.99 EUR in cents
+      unit_amount: 399, // 3.99 EUR in cents
       currency: 'eur',
     });
 
@@ -30,7 +30,7 @@ async function createProducts() {
 
     const unlimitedPrice = await stripe.prices.create({
       product: unlimitedProduct.id,
-      unit_amount: 9999, // 99.99 EUR in cents
+      unit_amount: 3999, // 39.99 EUR in cents
       currency: 'eur',
       recurring: {
         interval: 'month',

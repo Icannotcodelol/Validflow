@@ -11,29 +11,6 @@ export default function PricingPage() {
   const router = useRouter();
   const supabase = useSupabase();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/signin');
-      } else {
-        setUser(session.user);
-      }
-      setLoading(false);
-    };
-
-    checkUser();
-  }, [supabase, router]);
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!user) {
-    return null; // Router will redirect to signin
-  }
 
   return (
     <div className="min-h-screen bg-white pt-36 pb-12">
@@ -41,10 +18,10 @@ export default function PricingPage() {
         <div className="absolute top-8 left-8">
           <Button
             variant="ghost"
-            onClick={() => router.push("/validate")}
+            onClick={() => router.push("/")}
             className="text-gray-600 hover:text-gray-900"
           >
-            ← Back to Validation
+            ← Back to Home
           </Button>
         </div>
 
@@ -61,7 +38,7 @@ export default function PricingPage() {
             <div className="rounded-lg border border-gray-200 shadow-sm p-8">
               <h2 className="text-2xl font-semibold mb-4">Pay As You Go</h2>
               <p className="text-gray-600 mb-4">Perfect for testing a few ideas</p>
-              <div className="text-4xl font-bold mb-6">€9.99<span className="text-lg text-gray-500 font-normal">/credit</span></div>
+              <div className="text-4xl font-bold mb-6">€3.99<span className="text-lg text-gray-500 font-normal">/credit</span></div>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-center">
                   <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,12 +59,12 @@ export default function PricingPage() {
                   No commitment
                 </li>
               </ul>
-              <StripeCheckout
-                priceId={process.env.NEXT_PUBLIC_STRIPE_CREDIT_PRICE_ID!}
-                type="credits"
-                userId={user.id}
-                credits={1}
-              />
+              <Button 
+                className="w-full"
+                onClick={() => router.push('/signin')}
+              >
+                Get Started
+              </Button>
             </div>
 
             {/* Unlimited Package */}
@@ -97,7 +74,7 @@ export default function PricingPage() {
               </div>
               <h2 className="text-2xl font-semibold mb-4">Unlimited Access</h2>
               <p className="text-gray-600 mb-4">For serious entrepreneurs</p>
-              <div className="text-4xl font-bold mb-6">€99.99<span className="text-lg text-gray-500 font-normal">/month</span></div>
+              <div className="text-4xl font-bold mb-6">€14.99<span className="text-lg text-gray-500 font-normal">/month</span></div>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-center">
                   <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,11 +95,12 @@ export default function PricingPage() {
                   Cancel anytime
                 </li>
               </ul>
-              <StripeCheckout
-                priceId={process.env.NEXT_PUBLIC_STRIPE_UNLIMITED_PRICE_ID!}
-                type="unlimited"
-                userId={user.id}
-              />
+              <Button 
+                className="w-full"
+                onClick={() => router.push('/signin')}
+              >
+                Get Started
+              </Button>
             </div>
           </div>
         </div>

@@ -315,6 +315,11 @@ export default function Home() {
                   >
                     {isLoading ? "Loading..." : "Try ValidFlow"} {!isLoading && <ArrowRight className="h-4 w-4" />}
                   </Button>
+                  <Link href="/pricing">
+                    <Button size="lg" variant="outline" className="bg-black hover:bg-black/90 text-white border-white/20">
+                      View Pricing
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>

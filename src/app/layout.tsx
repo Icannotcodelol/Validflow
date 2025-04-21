@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { Providers } from "@/components/providers/Providers"
 import { Toaster } from "@/components/ui/toaster"
+import { CookieConsent } from "@/components/CookieConsent"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -37,6 +38,7 @@ export default function RootLayout({
         <SpeedInsights />
         {gaId && <GoogleAnalytics gaId={gaId} />}
         <Toaster />
+        <CookieConsent />
       </body>
     </html>
   )

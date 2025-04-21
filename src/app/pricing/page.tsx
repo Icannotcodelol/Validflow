@@ -60,7 +60,7 @@ export default function PricingPage() {
                 </li>
               </ul>
               <a 
-                href="https://app.validflow.io/signin"
+                href="https://validflow.io/signin"
                 className="inline-block w-full"
               >
                 <Button className="w-full">
@@ -98,7 +98,7 @@ export default function PricingPage() {
                 </li>
               </ul>
               <a 
-                href="https://app.validflow.io/signin"
+                href="https://validflow.io/signin"
                 className="inline-block w-full"
               >
                 <Button className="w-full">

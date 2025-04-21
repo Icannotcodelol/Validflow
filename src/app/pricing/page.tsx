@@ -61,7 +61,7 @@ export default function PricingPage() {
               </ul>
               <Button 
                 className="w-full"
-                onClick={() => router.push('/signin')}
+                onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_BASE_URL}/signin`}
               >
                 Get Started
               </Button>
@@ -97,7 +97,7 @@ export default function PricingPage() {
               </ul>
               <Button 
                 className="w-full"
-                onClick={() => router.push('/signin')}
+                onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_BASE_URL}/signin`}
               >
                 Get Started
               </Button>

@@ -12,6 +12,7 @@ import { TypingAnimation } from "@/components/typing-animation"
 import { productIdeas } from "@/lib/product-ideas"
 import { AnalysisDisplay } from "@/components/AnalysisDisplay"
 import { AnalysisDocument, UserInputSchema, ExecutiveSummarySchema, MarketSizeGrowthSchema, TargetUsersSchema, CompetitionSchema, UnitEconomicsSchema, MarketingChannelsSchema, GoToMarketPlanSchema, CriticalThoughtQuestionsSchema, VCSentimentSchema, ReportSummarySchema } from "@/lib/ai/models"
+import { ExampleValidation } from "@/components/ExampleValidation"
 
 interface Detail {
   title: string
@@ -333,6 +334,9 @@ export default function Home() {
               </div>
             </div>
           </section>
+
+          {/* Example Validation Section */}
+          <ExampleValidation />
 
           {/* How It Works Section with solid background */}
           <section className="w-full py-12 md:py-24 lg:py-32 bg-muted">

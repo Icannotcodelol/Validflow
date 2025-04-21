@@ -252,7 +252,7 @@ export default function Home() {
           {!isAuthChecking && (
             session ? (
               <>
-                <Link href="/validate">
+                <Link href="/dashboard">
                   <Button variant="ghost" size="sm">
                     Dashboard
                   </Button>

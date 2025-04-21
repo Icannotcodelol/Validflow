@@ -74,6 +74,27 @@ export function AnalysisDisplay({ analysis, isLoading, error }: AnalysisDisplayP
 
   return (
     <div className="max-w-4xl mx-auto">
+      <div className="flex justify-end mb-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => exportToPDF(analysis)}>
+              Download as PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportToCSV(analysis)}>
+              Download as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportToJSON(analysis)}>
+              Download as JSON
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       {completedSections.length === 0 && isLoading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />

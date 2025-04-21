@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/use-toast'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
@@ -20,11 +19,14 @@ export function SubscriptionManager({
   onSubscriptionChange 
 }: SubscriptionManagerProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
 
   const handleCancelSubscription = async () => {
     setIsLoading(true)
+    setError(null)
+    setSuccess(false)
     try {
       const response = await fetch('/api/subscription/cancel', {
         method: 'POST',
@@ -39,10 +41,7 @@ export function SubscriptionManager({
         throw new Error(data.error || 'Failed to cancel subscription')
       }
 
-      toast({
-        title: 'Subscription Cancelled',
-        description: 'Your subscription has been cancelled successfully.',
-      })
+      setSuccess(true)
 
       if (onSubscriptionChange) {
         onSubscriptionChange()
@@ -51,11 +50,7 @@ export function SubscriptionManager({
       router.refresh()
     } catch (error) {
       console.error('Error cancelling subscription:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to cancel subscription. Please try again.',
-        variant: 'destructive',
-      })
+      setError(error instanceof Error ? error.message : 'Failed to cancel subscription. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -83,6 +78,12 @@ export function SubscriptionManager({
                 </span>
               )}
             </div>
+            {error && (
+              <p className="text-sm text-red-500 mt-2">{error}</p>
+            )}
+            {success && (
+              <p className="text-sm text-green-500 mt-2">Subscription cancelled successfully.</p>
+            )}
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>

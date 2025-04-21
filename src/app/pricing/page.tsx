@@ -59,12 +59,14 @@ export default function PricingPage() {
                   No commitment
                 </li>
               </ul>
-              <Button 
-                className="w-full"
-                onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_BASE_URL}/signin`}
+              <a 
+                href="https://app.validflow.io/signin"
+                className="inline-block w-full"
               >
-                Get Started
-              </Button>
+                <Button className="w-full">
+                  Get Started
+                </Button>
+              </a>
             </div>
 
             {/* Unlimited Package */}
@@ -95,12 +97,14 @@ export default function PricingPage() {
                   Cancel anytime
                 </li>
               </ul>
-              <Button 
-                className="w-full"
-                onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_BASE_URL}/signin`}
+              <a 
+                href="https://app.validflow.io/signin"
+                className="inline-block w-full"
               >
-                Get Started
-              </Button>
+                <Button className="w-full">
+                  Get Started
+                </Button>
+              </a>
             </div>
           </div>
         </div>

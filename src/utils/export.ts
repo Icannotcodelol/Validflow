@@ -22,6 +22,64 @@ interface jsPDFWithAutoTable extends jsPDF {
   };
 }
 
+// Add these interfaces at the top of the file
+interface ValidationPhase {
+  name?: string;
+  description?: string;
+  timeline?: string;
+  successCriteria?: string[];
+  activities?: string[];
+  deliverables?: string[];
+}
+
+interface Risk {
+  risk?: string;
+  impact?: string;
+  mitigation?: string;
+}
+
+interface Metric {
+  name?: string;
+  description?: string;
+  category?: string;
+  target?: string;
+  frequency?: string;
+  dataSource?: string;
+  benchmarks?: string[];
+}
+
+interface Experiment {
+  name?: string;
+  hypothesis?: string;
+  methodology?: string;
+  duration?: string;
+  sampleSize?: string;
+  variables?: {
+    independent?: string[];
+    dependent?: string[];
+    control?: string[];
+  };
+  successCriteria?: string[];
+  risks?: string[];
+}
+
+interface ValidationRoadmapData {
+  overview?: string;
+  phases?: ValidationPhase[];
+  risks?: Risk[];
+}
+
+interface KPIData {
+  overview?: string;
+  metrics?: Metric[];
+  monitoringStrategy?: string;
+}
+
+interface ExperimentData {
+  overview?: string;
+  experiments?: Experiment[];
+}
+
 // --- PDF Generation Helpers ---
 
 const PAGE_MARGIN = 20;
@@ -606,6 +664,153 @@ export async function exportToPDF(analysis: AnalysisDocument) {
        addSubHeading(doc, "Next Steps");
        // Map nextSteps (ActionableItem objects) to strings for addList
        addList(doc, reportSummaryData.nextSteps.map(item => item.step ?? ''), LIST_INDENT);
+    }
+    yPos += SECTION_SPACING;
+  }
+
+  // --- Validation Roadmap ---
+  const validationRoadmapSection = analysis.sections.validationRoadmap;
+  if (isSectionComplete(validationRoadmapSection)) {
+    const validationRoadmapData: { data?: ValidationRoadmapData } = validationRoadmapSection;
+    addSectionTitle(doc, "Validation Roadmap");
+
+    if (validationRoadmapData.data?.overview) {
+      addSubHeading(doc, "Overview");
+      addParagraph(doc, validationRoadmapData.data.overview);
+    }
+
+    if (validationRoadmapData.data?.phases && validationRoadmapData.data.phases.length > 0) {
+      addSubHeading(doc, "Validation Phases");
+      validationRoadmapData.data.phases.forEach((phase: ValidationPhase) => {
+        yPos = checkAddPage(doc, yPos);
+        doc.setFontSize(12);
+        doc.setFont('', 'bold');
+        doc.text(phase?.name ?? 'Unnamed Phase', PAGE_MARGIN, yPos);
+        doc.setFont('', 'normal');
+        yPos += LINE_HEIGHT;
+        
+        addKeyValue(doc, "Description", phase?.description, LIST_INDENT);
+        addKeyValue(doc, "Timeline", phase?.timeline, LIST_INDENT);
+        addKeyValue(doc, "Success Criteria", phase?.successCriteria?.join(', ') ?? '', LIST_INDENT);
+        
+        if (phase?.activities && phase.activities.length > 0) {
+          addKeyValue(doc, "Activities", "", LIST_INDENT);
+          addList(doc, phase.activities, LIST_INDENT * 2);
+        }
+        
+        if (phase?.deliverables && phase.deliverables.length > 0) {
+          addKeyValue(doc, "Deliverables", "", LIST_INDENT);
+          addList(doc, phase.deliverables, LIST_INDENT * 2);
+        }
+        
+        yPos += SUBSECTION_SPACING;
+      });
+    }
+
+    if (validationRoadmapData.data?.risks && validationRoadmapData.data.risks.length > 0) {
+      addSubHeading(doc, "Risk Assessment");
+      addTable(doc,
+        [['Risk', 'Impact', 'Mitigation Strategy']],
+        validationRoadmapData.data.risks.map((r: Risk) => [r?.risk, r?.impact, r?.mitigation])
+      );
+    }
+    yPos += SECTION_SPACING;
+  }
+
+  // --- Key Performance Indicators ---
+  const kpiSection = analysis.sections.keyPerformanceIndicators;
+  if (isSectionComplete(kpiSection)) {
+    const kpiData: { data?: KPIData } = kpiSection;
+    addSectionTitle(doc, "Key Performance Indicators");
+
+    if (kpiData.data?.overview) {
+      addSubHeading(doc, "Overview");
+      addParagraph(doc, kpiData.data.overview);
+    }
+
+    if (kpiData.data?.metrics && kpiData.data.metrics.length > 0) {
+      addSubHeading(doc, "Key Metrics");
+      kpiData.data.metrics.forEach((metric: Metric) => {
+        yPos = checkAddPage(doc, yPos);
+        doc.setFontSize(12);
+        doc.setFont('', 'bold');
+        doc.text(metric?.name ?? 'Unnamed Metric', PAGE_MARGIN, yPos);
+        doc.setFont('', 'normal');
+        yPos += LINE_HEIGHT;
+
+        addKeyValue(doc, "Description", metric?.description, LIST_INDENT);
+        addKeyValue(doc, "Category", metric?.category, LIST_INDENT);
+        addKeyValue(doc, "Target", metric?.target, LIST_INDENT);
+        addKeyValue(doc, "Frequency", metric?.frequency, LIST_INDENT);
+        addKeyValue(doc, "Data Source", metric?.dataSource, LIST_INDENT);
+
+        if (metric?.benchmarks && metric.benchmarks.length > 0) {
+          addKeyValue(doc, "Benchmarks", "", LIST_INDENT);
+          addList(doc, metric.benchmarks, LIST_INDENT * 2);
+        }
+
+        yPos += SUBSECTION_SPACING;
+      });
+    }
+
+    if (kpiData.data?.monitoringStrategy) {
+      addSubHeading(doc, "Monitoring Strategy");
+      addParagraph(doc, kpiData.data.monitoringStrategy);
+    }
+    yPos += SECTION_SPACING;
+  }
+
+  // --- Experiment Design ---
+  const experimentSection = analysis.sections.experimentDesign;
+  if (isSectionComplete(experimentSection)) {
+    const experimentData: { data?: ExperimentData } = experimentSection;
+    addSectionTitle(doc, "Experiment Design");
+
+    if (experimentData.data?.overview) {
+      addSubHeading(doc, "Overview");
+      addParagraph(doc, experimentData.data.overview);
+    }
+
+    if (experimentData.data?.experiments && experimentData.data.experiments.length > 0) {
+      addSubHeading(doc, "Planned Experiments");
+      experimentData.data.experiments.forEach((experiment: Experiment) => {
+        yPos = checkAddPage(doc, yPos);
+        doc.setFontSize(12);
+        doc.setFont('', 'bold');
+        doc.text(experiment?.name ?? 'Unnamed Experiment', PAGE_MARGIN, yPos);
+        doc.setFont('', 'normal');
+        yPos += LINE_HEIGHT;
+
+        addKeyValue(doc, "Hypothesis", experiment?.hypothesis, LIST_INDENT);
+        addKeyValue(doc, "Methodology", experiment?.methodology, LIST_INDENT);
+        addKeyValue(doc, "Duration", experiment?.duration, LIST_INDENT);
+        addKeyValue(doc, "Sample Size", experiment?.sampleSize, LIST_INDENT);
+        
+        if (experiment?.variables) {
+          addKeyValue(doc, "Variables", "", LIST_INDENT);
+          if (experiment.variables.independent) {
+            addKeyValue(doc, "Independent", experiment.variables.independent.join(', '), LIST_INDENT * 2);
+          }
+          if (experiment.variables.dependent) {
+            addKeyValue(doc, "Dependent", experiment.variables.dependent.join(', '), LIST_INDENT * 2);
+          }
+          if (experiment.variables.control) {
+            addKeyValue(doc, "Control", experiment.variables.control.join(', '), LIST_INDENT * 2);
+          }
+        }
+
+        if (experiment?.successCriteria && experiment.successCriteria.length > 0) {
+          addKeyValue(doc, "Success Criteria", "", LIST_INDENT);
+          addList(doc, experiment.successCriteria, LIST_INDENT * 2);
+        }
+
+        if (experiment?.risks && experiment.risks.length > 0) {
+          addKeyValue(doc, "Risks", "", LIST_INDENT);
+          addList(doc, experiment.risks, LIST_INDENT * 2);
+        }
+
+        yPos += SUBSECTION_SPACING;
+      });
     }
     yPos += SECTION_SPACING;
   }

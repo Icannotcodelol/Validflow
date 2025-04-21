@@ -11,6 +11,46 @@ export default function PricingPage() {
   const router = useRouter();
   const supabase = useSupabase();
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUser(session.user);
+      }
+      setLoading(false);
+    };
+
+    checkUser();
+  }, [supabase]);
+
+  const handleGetStarted = (type: 'credits' | 'unlimited') => {
+    if (!user) {
+      window.location.href = 'https://validflow.io/signin';
+    } else {
+      if (type === 'credits') {
+        // Show Stripe checkout for credits
+        return (
+          <StripeCheckout
+            priceId={process.env.NEXT_PUBLIC_STRIPE_CREDIT_PRICE_ID!}
+            type="credits"
+            userId={user.id}
+            credits={1}
+          />
+        );
+      } else {
+        // Show Stripe checkout for unlimited
+        return (
+          <StripeCheckout
+            priceId={process.env.NEXT_PUBLIC_STRIPE_UNLIMITED_PRICE_ID!}
+            type="unlimited"
+            userId={user.id}
+          />
+        );
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white pt-36 pb-12">
@@ -59,14 +99,23 @@ export default function PricingPage() {
                   No commitment
                 </li>
               </ul>
-              <a 
-                href="https://validflow.io/signin"
-                className="inline-block w-full"
-              >
-                <Button className="w-full">
+              {loading ? (
+                <Button className="w-full" disabled>Loading...</Button>
+              ) : user ? (
+                <StripeCheckout
+                  priceId={process.env.NEXT_PUBLIC_STRIPE_CREDIT_PRICE_ID!}
+                  type="credits"
+                  userId={user.id}
+                  credits={1}
+                />
+              ) : (
+                <Button 
+                  className="w-full"
+                  onClick={() => handleGetStarted('credits')}
+                >
                   Get Started
                 </Button>
-              </a>
+              )}
             </div>
 
             {/* Unlimited Package */}
@@ -97,14 +146,22 @@ export default function PricingPage() {
                   Cancel anytime
                 </li>
               </ul>
-              <a 
-                href="https://validflow.io/signin"
-                className="inline-block w-full"
-              >
-                <Button className="w-full">
+              {loading ? (
+                <Button className="w-full" disabled>Loading...</Button>
+              ) : user ? (
+                <StripeCheckout
+                  priceId={process.env.NEXT_PUBLIC_STRIPE_UNLIMITED_PRICE_ID!}
+                  type="unlimited"
+                  userId={user.id}
+                />
+              ) : (
+                <Button 
+                  className="w-full"
+                  onClick={() => handleGetStarted('unlimited')}
+                >
                   Get Started
                 </Button>
-              </a>
+              )}
             </div>
           </div>
         </div>

@@ -238,17 +238,6 @@ export default function Home() {
           <Lightbulb className="h-6 w-6 text-primary" />
           <span className="ml-2 text-xl font-bold">ValidFlow</span>
         </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/features">
-            Features
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/pricing">
-            Pricing
-          </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/about">
-            About
-          </Link>
-        </nav>
         <div className="ml-auto flex items-center gap-2">
           {!isAuthChecking && (
             session ? (
@@ -326,11 +315,6 @@ export default function Home() {
                   >
                     {isLoading ? "Loading..." : "Try ValidFlow"} {!isLoading && <ArrowRight className="h-4 w-4" />}
                   </Button>
-                  <Link href="/pricing">
-                    <Button size="lg" variant="outline" className="bg-black hover:bg-black/90 text-white border-white/20">
-                      View Pricing
-                    </Button>
-                  </Link>
                 </div>
               </div>
             </div>
@@ -396,7 +380,7 @@ export default function Home() {
                     Ready to Validate Your Idea?
                   </h2>
                   <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                    Start with our free tier or upgrade to premium for comprehensive insights.
+                    Get started now and receive your comprehensive validation report
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">

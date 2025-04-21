@@ -4,7 +4,19 @@ import type { NextRequest } from 'next/server'
 import type { Database } from '@/types/supabase'
 
 // List of public routes that don't require authentication
-const publicRoutes = ['/', '/signin', '/signup', '/auth/callback', '/pricing', '/about', '/features']
+const publicRoutes = [
+  '/', 
+  '/signin', 
+  '/signup', 
+  '/auth/callback', 
+  '/pricing', 
+  '/about', 
+  '/features',
+  '/legal/terms-of-service',
+  '/legal/privacy-policy',
+  '/legal/cookie-policy',
+  '/legal/refund-policy'
+]
 
 // List of paths that should skip auth check completely
 const skipAuthPaths = [

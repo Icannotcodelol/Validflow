@@ -140,61 +140,125 @@ export default function ValidatePage() {
   });
 
   useEffect(() => {
+    let mounted = true;
+
     const checkUser = async () => {
-      console.log('[ValidatePage useEffect] Starting session check')
-      setLoading(true)
+      console.log('[ValidatePage useEffect] Starting session check');
+      if (!mounted) return;
       
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.error('[ValidatePage useEffect] Session error:', sessionError)
-          setLoading(false)
-          router.push('/signin?error=session_error')
-          return
+          console.error('[ValidatePage useEffect] Session error:', sessionError);
+          if (mounted) {
+            setError('Session error occurred. Please try signing in again.');
+            setLoading(false);
+          }
+          return;
         }
 
-        console.log('[ValidatePage useEffect] Session status:', !!session)
+        console.log('[ValidatePage useEffect] Session status:', !!session);
         
         if (!session) {
-          console.log('[ValidatePage useEffect] No session found, redirecting to signin')
-          setLoading(false)
-          router.push('/signin?redirectTo=/validate')
-          return
+          console.log('[ValidatePage useEffect] No session found, redirecting to signin');
+          if (mounted) {
+            setLoading(false);
+          }
+          // Store the current URL before redirecting
+          const currentPath = window.location.pathname + window.location.search;
+          router.push(`/signin?redirectTo=${encodeURIComponent(currentPath)}`);
+          return;
         }
 
-        // Get user credits
-        const { data: credits, error: creditsError } = await supabase
-          .from('user_credits')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single()
+        if (!mounted) return;
 
-        if (creditsError) {
-          console.error('[ValidatePage useEffect] Credits error:', creditsError)
-          setLoading(false)
-          return
+        try {
+          // Get user credits
+          const { data: credits, error: creditsError } = await supabase
+            .from('user_credits')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (creditsError) {
+            console.error('[ValidatePage useEffect] Credits error:', creditsError);
+            if (mounted) {
+              setError('Failed to load user credits. Please refresh the page.');
+              setLoading(false);
+            }
+            return;
+          }
+
+          if (mounted) {
+            setUserCredits(credits);
+            setUser(session.user);
+            setLoading(false);
+            setError(null);
+          }
+        } catch (error) {
+          console.error('[ValidatePage useEffect] Credits error:', error);
+          if (mounted) {
+            setError('An unexpected error occurred. Please refresh the page.');
+            setLoading(false);
+          }
         }
-
-        setUserCredits(credits)
-        setUser(session.user)
-        setLoading(false)
       } catch (error) {
-        console.error('[ValidatePage useEffect] Unexpected error:', error)
-        setLoading(false)
-        router.push('/signin?error=unexpected_error')
+        console.error('[ValidatePage useEffect] Unexpected error:', error);
+        if (mounted) {
+          setError('An unexpected error occurred. Please try again.');
+          setLoading(false);
+        }
       }
-    }
+    };
 
-    checkUser()
-  }, [supabase, router])
+    checkUser();
 
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      mounted = false;
+    };
+  }, [supabase, router]);
+
+  // Show loading state
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your workspace...</p>
+        </div>
+      </div>
+    );
   }
 
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6 bg-red-50 rounded-lg">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button
+            onClick={() => window.location.reload()}
+            variant="outline"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user, the useEffect will handle redirect
   if (!user) {
-    return null; // Router will redirect to signin
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to sign in...</p>
+        </div>
+      </div>
+    );
   }
 
   const handleNeedCredits = () => {

@@ -7,88 +7,49 @@ import { Button } from "@/components/ui/button"
 import { Plus, Loader2 } from "lucide-react"
 import { Analysis } from "@/types/analysis"
 import { AnalysisCard } from "@/components/dashboard/AnalysisCard"
-import { SubscriptionManager } from "@/components/SubscriptionManager"
-
-interface UserCredits {
-  credits_balance: number
-  has_unlimited: boolean
-  unlimited_until: string | null
-  subscription_id: string | null
-}
 
 export default function DashboardPage() {
   const router = useRouter()
   const [analyses, setAnalyses] = useState<Analysis[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [userCredits, setUserCredits] = useState<UserCredits | null>(null)
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAnalyses = async () => {
       try {
-        const [analysesResponse, creditsResponse] = await Promise.all([
-          fetch('/api/analyses', { credentials: 'include' }),
-          fetch('/api/user/credits', { credentials: 'include' })
-        ])
+        const response = await fetch('/api/analyses', {
+          credentials: 'include',
+        })
 
-        if (!analysesResponse.ok || !creditsResponse.ok) {
-          if (analysesResponse.status === 401 || creditsResponse.status === 401) {
+        if (!response.ok) {
+          if (response.status === 401) {
             router.push('/signin')
             return
           }
-          throw new Error('Failed to fetch data')
+          throw new Error('Failed to fetch analyses')
         }
 
-        const [analysesData, creditsData] = await Promise.all([
-          analysesResponse.json(),
-          creditsResponse.json()
-        ])
-
-        if (analysesData.success) {
-          setAnalyses(analysesData.analyses)
-        }
-        
-        if (creditsData.success) {
-          setUserCredits(creditsData.credits)
+        const data = await response.json()
+        if (data.success) {
+          setAnalyses(data.analyses)
+        } else {
+          throw new Error(data.message || 'Failed to fetch analyses')
         }
       } catch (error) {
-        console.error('Error fetching data:', error)
+        console.error('Error fetching analyses:', error)
         setError(error instanceof Error ? error.message : 'An error occurred')
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchData()
+    fetchAnalyses()
   }, [router])
-
-  const handleSubscriptionChange = () => {
-    // Refresh user credits data
-    fetch('/api/user/credits', { credentials: 'include' })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          setUserCredits(data.credits)
-        }
-      })
-      .catch(console.error)
-  }
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto py-8 px-4 mt-16">
-        {userCredits && (
-          <div className="mb-8">
-            <SubscriptionManager
-              hasUnlimited={userCredits.has_unlimited}
-              unlimitedUntil={userCredits.unlimited_until}
-              subscriptionId={userCredits.subscription_id}
-              onSubscriptionChange={handleSubscriptionChange}
-            />
-          </div>
-        )}
-
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">Your Analyses</h1>
           <Button onClick={() => router.push('/validate')}>

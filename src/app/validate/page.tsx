@@ -206,7 +206,7 @@ export default function ValidatePage() {
     setIsLoading(true);
     setError(null);
 
-    // Check if user has credits or unlimited access
+    // Check if user has credits, unlimited access, or available credit balance
     if (!userCredits) {
       setError('Unable to verify credits. Please try again.');
       setIsLoading(false);
@@ -218,7 +218,7 @@ export default function ValidatePage() {
       userCredits.unlimited_until && 
       new Date(userCredits.unlimited_until) > now;
 
-    if (!hasValidUnlimited && userCredits.credits_balance === 0) {
+    if (!hasValidUnlimited && userCredits.credits_balance <= 0) {
       setError('You need credits to analyze your idea.');
       setIsLoading(false);
       handleNeedCredits();

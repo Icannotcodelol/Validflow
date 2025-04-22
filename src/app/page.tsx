@@ -301,8 +301,7 @@ export default function Home() {
                       />
                     </div>
                     <p className="max-w-[600px] text-white/90 md:text-xl text-left">
-                      AI-powered analysis to evaluate your product concept, highlight strengths, weaknesses, and market
-                      opportunities before you invest time and resources.
+                      Take the guesswork out of your startup idea. Get instant market validation and competitor insights that usually take months to gather. Start your journey with confidence, not speculation.
                     </p>
                   </div>
                 </div>

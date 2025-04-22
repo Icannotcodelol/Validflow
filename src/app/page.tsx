@@ -205,8 +205,7 @@ export default function Home() {
       } else {
         const now = new Date()
         const hasValidUnlimited = credits.has_unlimited && 
-          credits.unlimited_until && 
-          new Date(credits.unlimited_until) > now
+          (credits.unlimited_until === null || new Date(credits.unlimited_until) > now)
 
         if (hasValidUnlimited || credits.credits_balance > 0) {
           router.push('/validate')

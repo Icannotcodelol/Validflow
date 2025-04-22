@@ -17,6 +17,9 @@ export function Footer() {
         <Link className="text-xs hover:underline underline-offset-4" href="/legal/refund-policy">
           Refunds
         </Link>
+        <Link className="text-xs hover:underline underline-offset-4" href="mailto:henkes2max@gmail.com">
+          Contact Us
+        </Link>
       </nav>
     </footer>
   )

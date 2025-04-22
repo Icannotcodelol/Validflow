@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { User } from '@supabase/supabase-js';
+import { LoadingScreen } from "@/components/ui/loading";
 
 const industryOptions = [
   { value: "technology", label: "Technology" },
@@ -119,15 +120,10 @@ export default function ValidatePage() {
   const router = useRouter();
   const supabase = useSupabase();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userCredits, setUserCredits] = useState<{
-    credits_balance: number;
-    has_unlimited: boolean;
-    unlimited_until: string | null;
-    free_analysis_used: boolean;
-  } | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [userCredits, setUserCredits] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     description: "",
     industry: "",
@@ -143,12 +139,14 @@ export default function ValidatePage() {
     const checkUser = async () => {
       console.log('[ValidatePage useEffect] Starting session check')
       setLoading(true)
+      setError(null)
       
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
           console.error('[ValidatePage useEffect] Session error:', sessionError)
+          setError('Session error. Please try signing in again.')
           setLoading(false)
           router.push('/signin?error=session_error')
           return
@@ -172,17 +170,18 @@ export default function ValidatePage() {
 
         if (creditsError) {
           console.error('[ValidatePage useEffect] Credits error:', creditsError)
+          setError('Error loading user credits. Please try again.')
           setLoading(false)
           return
         }
 
         setUserCredits(credits)
         setUser(session.user)
-        setLoading(false)
       } catch (error) {
         console.error('[ValidatePage useEffect] Unexpected error:', error)
+        setError('An unexpected error occurred. Please try again.')
+      } finally {
         setLoading(false)
-        router.push('/signin?error=unexpected_error')
       }
     }
 
@@ -190,7 +189,29 @@ export default function ValidatePage() {
   }, [supabase, router])
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <LoadingScreen />;
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white pt-36 pb-12">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Error</h1>
+              <p className="text-gray-500 text-sm mb-4">{error}</p>
+              <Button
+                variant="outline"
+                onClick={() => router.push('/')}
+                className="mt-4"
+              >
+                Return to Home
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {

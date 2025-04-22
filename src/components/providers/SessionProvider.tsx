@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import type { Database } from '@/types/supabase'
 import { checkSupabaseEnv } from '@/lib/supabase/env-check'
+import { LoadingScreen } from '@/components/ui/loading'
 
 const SupabaseContext = createContext<ReturnType<typeof createClientComponentClient<Database>> | null>(null)
 
@@ -26,6 +27,8 @@ export default function SupabaseProvider({
   children: React.ReactNode
 }) {
   const [supabase] = useState(() => createClientComponentClient<Database>())
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const refreshTokenTimer = useRef<NodeJS.Timeout>()
   const isRefreshing = useRef(false)
@@ -56,6 +59,7 @@ export default function SupabaseProvider({
       
       if (error) {
         console.error('[SessionProvider] Error refreshing session:', error)
+        setError(error.message)
         // Clear any existing timer
         if (refreshTokenTimer.current) {
           clearTimeout(refreshTokenTimer.current)
@@ -79,6 +83,7 @@ export default function SupabaseProvider({
 
       if (session) {
         console.log('[SessionProvider] Session refreshed successfully')
+        setError(null)
         // Schedule next refresh 5 minutes before token expiry
         const expiresIn = (new Date(session.expires_at || 0).getTime() - Date.now()) - (5 * 60 * 1000)
         if (refreshTokenTimer.current) {
@@ -88,6 +93,7 @@ export default function SupabaseProvider({
       }
     } catch (e) {
       console.error('[SessionProvider] Unexpected error during refresh:', e)
+      setError(e instanceof Error ? e.message : 'An unexpected error occurred')
     } finally {
       isRefreshing.current = false
     }
@@ -95,7 +101,14 @@ export default function SupabaseProvider({
 
   useEffect(() => {
     // Initial session check with force refresh for Safari
-    refreshSession(isSafari)
+    const initializeSession = async () => {
+      try {
+        await refreshSession(isSafari)
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+    initializeSession()
 
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -147,6 +160,12 @@ export default function SupabaseProvider({
 
   return (
     <SupabaseContext.Provider value={supabase}>
+      {isInitializing && <LoadingScreen />}
+      {error && (
+        <div className="fixed top-4 right-4 z-50 bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
       {children}
     </SupabaseContext.Provider>
   )

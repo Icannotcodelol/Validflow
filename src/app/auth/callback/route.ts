@@ -9,6 +9,12 @@ export async function GET(request: Request) {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
     const redirectTo = requestUrl.searchParams.get('redirectTo') || '/'
+    const error = requestUrl.searchParams.get('error')
+
+    if (error) {
+      console.error('[Auth Callback] Error in callback:', error)
+      return NextResponse.redirect(new URL(`/auth/error?error=${encodeURIComponent(error)}`, requestUrl.origin))
+    }
 
     console.log('[Auth Callback] Code present:', !!code)
     console.log('[Auth Callback] Redirecting to:', redirectTo)
@@ -18,11 +24,16 @@ export async function GET(request: Request) {
       const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
       
       console.log('[Auth Callback] Exchanging code for session')
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+      const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
       
-      if (error) {
-        console.error('[Auth Callback] Error exchanging code:', error)
-        throw error
+      if (sessionError) {
+        console.error('[Auth Callback] Error exchanging code:', sessionError)
+        return NextResponse.redirect(new URL(`/auth/error?error=${encodeURIComponent(sessionError.message)}`, requestUrl.origin))
+      }
+      
+      if (!data.session) {
+        console.error('[Auth Callback] No session after exchange')
+        return NextResponse.redirect(new URL('/auth/error?error=no_session', requestUrl.origin))
       }
       
       console.log('[Auth Callback] Session exchange successful:', !!data.session)
@@ -36,6 +47,6 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('[Auth Callback] Error in callback:', error)
     const baseUrl = process.env.NODE_ENV === 'production' ? 'https://validflow.io' : request.url
-    return NextResponse.redirect(new URL('/signin', baseUrl))
+    return NextResponse.redirect(new URL(`/auth/error?error=${encodeURIComponent(error instanceof Error ? error.message : 'An unexpected error occurred')}`, baseUrl))
   }
 } 

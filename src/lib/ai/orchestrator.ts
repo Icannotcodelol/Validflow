@@ -147,20 +147,19 @@ export class Orchestrator {
     try {
       const { data, error } = await this.supabase
         .from('user_credits')
-        .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
+        .select('credits_balance, has_unlimited, unlimited_until')
         .eq('user_id', userId)
         .single();
 
       if (error) {
-        // If no record exists, create one with free analysis available
+        // If no record exists, create one with 3 credits
         if (error.code === 'PGRST116') {
           const { data: newData, error: insertError } = await this.supabase
             .from('user_credits')
             .insert({
               user_id: userId,
-              credits_balance: 0,
-              has_unlimited: false,
-              free_analysis_used: false
+              credits_balance: 3,
+              has_unlimited: false
             })
             .select()
             .single();
@@ -171,8 +170,8 @@ export class Orchestrator {
           }
 
           return {
-            hasCredits: false,
-            hasFreeAnalysis: true,
+            hasCredits: true,
+            hasFreeAnalysis: false,
             hasUnlimited: false
           };
         }
@@ -187,7 +186,7 @@ export class Orchestrator {
 
       return {
         hasCredits: data.credits_balance > 0,
-        hasFreeAnalysis: !data.free_analysis_used,
+        hasFreeAnalysis: false,
         hasUnlimited: hasValidUnlimited
       };
     } catch (error) {

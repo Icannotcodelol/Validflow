@@ -311,11 +311,7 @@ export default function ValidatePage() {
                   </span>
                 ) : (
                   <span>
-                    {userCredits.credits_balance === 0 && !userCredits.free_analysis_used ? (
-                      <span className="text-blue-600">Free Analysis Available</span>
-                    ) : (
-                      <span>Credits Remaining: <span className="font-medium">{userCredits.credits_balance}</span></span>
-                    )}
+                    Credits Available: <span className="font-medium">{userCredits.credits_balance}</span>
                   </span>
                 )}
               </div>

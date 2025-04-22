@@ -171,10 +171,10 @@ export default function Home() {
 
       console.log('Session found:', session)
 
-      // Check if user has credits or free analysis
+      // Check if user has credits or unlimited access
       const { data: credits, error: creditsError } = await supabase
         .from('user_credits')
-        .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
+        .select('credits_balance, has_unlimited, unlimited_until')
         .eq('user_id', session.user.id)
         .single()
 
@@ -182,14 +182,13 @@ export default function Home() {
       console.log('Credits error:', creditsError)
 
       if (creditsError || !credits) {
-        // No credits record, create one with free analysis
+        // No credits record, create one with 3 credits
         const { data: newCredits, error: insertError } = await supabase
           .from('user_credits')
           .insert({
             user_id: session.user.id,
-            credits_balance: 0,
-            has_unlimited: false,
-            free_analysis_used: false
+            credits_balance: 3,
+            has_unlimited: false
           })
           .select()
           .single()
@@ -209,7 +208,7 @@ export default function Home() {
           credits.unlimited_until && 
           new Date(credits.unlimited_until) > now
 
-        if (hasValidUnlimited || credits.credits_balance > 0 || !credits.free_analysis_used) {
+        if (hasValidUnlimited || credits.credits_balance > 0) {
           router.push('/validate')
         } else {
           router.push('/pricing')

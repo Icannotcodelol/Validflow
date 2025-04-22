@@ -42,6 +42,7 @@ export interface Database {
           has_unlimited: boolean
           unlimited_until: string | null
           subscription_id: string | null
+          free_analysis_used: boolean
           created_at: string
           updated_at: string
         }
@@ -51,6 +52,7 @@ export interface Database {
           has_unlimited?: boolean
           unlimited_until?: string | null
           subscription_id?: string | null
+          free_analysis_used?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -60,6 +62,7 @@ export interface Database {
           has_unlimited?: boolean
           unlimited_until?: string | null
           subscription_id?: string | null
+          free_analysis_used?: boolean
           created_at?: string
           updated_at?: string
         }

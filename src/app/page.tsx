@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ArrowRight, BarChart3, CheckCircle, ChevronRight, Lightbulb, Target } from "lucide-react"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { toast } from "@/components/ui/use-toast"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -198,6 +199,11 @@ export default function Home() {
         console.log('Insert error:', insertError)
 
         if (!insertError && newCredits) {
+          toast({
+            title: "Welcome!",
+            description: "Your free analysis is ready to use.",
+            duration: 5000,
+          })
           router.push('/validate')
         } else {
           console.error('Error creating credits:', insertError)
@@ -210,6 +216,13 @@ export default function Home() {
           new Date(credits.unlimited_until) > now
 
         if (hasValidUnlimited || credits.credits_balance > 0 || !credits.free_analysis_used) {
+          if (!credits.free_analysis_used) {
+            toast({
+              title: "Free Analysis Available",
+              description: "Try out our service with a complimentary analysis!",
+              duration: 5000,
+            })
+          }
           router.push('/validate')
         } else {
           router.push('/pricing')

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     // Check user credits/subscription
     const { data: credits, error: creditsError } = await supabase
       .from('user_credits')
-      .select('credits_balance, has_unlimited, unlimited_until')
+      .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
       .eq('user_id', user.id)
       .single();
 
@@ -42,7 +42,10 @@ export async function POST(req: NextRequest) {
       credits.unlimited_until && 
       new Date(credits.unlimited_until) > now;
 
-    if (!hasValidUnlimited && credits.credits_balance === 0) {
+    // Check if user can use their free analysis
+    const canUseFreeAnalysis = !credits.free_analysis_used;
+
+    if (!hasValidUnlimited && credits.credits_balance === 0 && !canUseFreeAnalysis) {
       return NextResponse.json(
         { error: 'No credits available' },
         { status: 403 }
@@ -81,8 +84,20 @@ export async function POST(req: NextRequest) {
 
         console.log(`[analyze API] Successfully created analysis ID: ${analysisId}`);
 
+        // If using free analysis, mark it as used
+        if (!hasValidUnlimited && credits.credits_balance === 0 && canUseFreeAnalysis) {
+          const { error: updateError } = await supabase
+            .from('user_credits')
+            .update({ free_analysis_used: true })
+            .eq('user_id', user.id);
+
+          if (updateError) {
+            console.error('Error marking free analysis as used:', updateError);
+            // Don't return error here, the analysis was successful
+          }
+        }
         // If not unlimited and using a credit, deduct it
-        if (!hasValidUnlimited && credits.credits_balance > 0) {
+        else if (!hasValidUnlimited && credits.credits_balance > 0) {
           const { error: updateError } = await supabase.rpc('add_credits', {
             p_user_id: user.id,
             p_credits: -1

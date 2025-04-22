@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
       .from('user_credits')
       .insert({
         user_id: data.user!.id,
-        free_analysis_used: false
+        credits_balance: 1,
+        free_analysis_used: true,
+        has_unlimited: false
       })
 
     if (creditsError) {

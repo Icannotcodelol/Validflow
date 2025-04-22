@@ -50,13 +50,6 @@ export default function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* Cloudflare Web Analytics */}
-        <script
-          defer
-          src="https://static.cloudflareinsights.com/beacon.min.js"
-          data-cf-beacon='{"token": "94d32b230f474fac92a2d3eff990318e"}'
-        />
-        {/* End Cloudflare Web Analytics */}
       </head>
       <body className={inter.className}>
         <Providers>

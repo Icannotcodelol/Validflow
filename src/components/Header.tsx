@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
+import { Settings } from "lucide-react";
 
 export default function Header() {
   const router = useRouter();
@@ -52,6 +53,13 @@ export default function Header() {
               onClick={() => router.push("/validate")}
             >
               New Analysis
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => router.push("/settings")}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
             </Button>
             <Button
               variant="ghost"

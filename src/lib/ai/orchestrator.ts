@@ -139,34 +139,57 @@ export class Orchestrator {
     }
   }
 
-  async checkUserCredits(userId: string): Promise<boolean> {
+  async checkUserCredits(userId: string): Promise<{
+    hasCredits: boolean;
+    hasFreeAnalysis: boolean;
+    hasUnlimited: boolean;
+  }> {
     try {
       const { data, error } = await this.supabase
         .from('user_credits')
-        .select('free_analysis_used')
+        .select('credits_balance, has_unlimited, unlimited_until, free_analysis_used')
         .eq('user_id', userId)
         .single();
 
       if (error) {
-        // If no record exists, create one
+        // If no record exists, create one with free analysis available
         if (error.code === 'PGRST116') {
-          const { error: insertError } = await this.supabase
+          const { data: newData, error: insertError } = await this.supabase
             .from('user_credits')
             .insert({
               user_id: userId,
+              credits_balance: 0,
+              has_unlimited: false,
               free_analysis_used: false
-            });
+            })
+            .select()
+            .single();
+
           if (insertError) {
             console.error('Error creating user credits:', insertError);
             throw new Error(`Failed to create user credits: ${insertError.message}`);
           }
-          return false;
+
+          return {
+            hasCredits: false,
+            hasFreeAnalysis: true,
+            hasUnlimited: false
+          };
         }
         console.error('Error checking user credits:', error);
         throw new Error(`Failed to check user credits: ${error.message}`);
       }
 
-      return data.free_analysis_used;
+      const now = new Date();
+      const hasValidUnlimited = data.has_unlimited && 
+        data.unlimited_until && 
+        new Date(data.unlimited_until) > now;
+
+      return {
+        hasCredits: data.credits_balance > 0,
+        hasFreeAnalysis: !data.free_analysis_used,
+        hasUnlimited: hasValidUnlimited
+      };
     } catch (error) {
       console.error('Error in checkUserCredits:', error);
       throw error;
@@ -181,8 +204,8 @@ export class Orchestrator {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('Error marking free analysis used:', error);
-        throw new Error(`Failed to mark free analysis used: ${error.message}`);
+        console.error('Error marking free analysis as used:', error);
+        throw new Error(`Failed to mark free analysis as used: ${error.message}`);
       }
     } catch (error) {
       console.error('Error in markFreeAnalysisUsed:', error);

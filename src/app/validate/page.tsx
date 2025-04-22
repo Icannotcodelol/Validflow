@@ -126,6 +126,7 @@ export default function ValidatePage() {
     credits_balance: number;
     has_unlimited: boolean;
     unlimited_until: string | null;
+    free_analysis_used: boolean;
   } | null>(null);
   const [formData, setFormData] = useState({
     description: "",
@@ -205,7 +206,7 @@ export default function ValidatePage() {
     setIsLoading(true);
     setError(null);
 
-    // Check if user has credits, unlimited access, or available credit balance
+    // Check if user has credits or unlimited access
     if (!userCredits) {
       setError('Unable to verify credits. Please try again.');
       setIsLoading(false);
@@ -217,7 +218,7 @@ export default function ValidatePage() {
       userCredits.unlimited_until && 
       new Date(userCredits.unlimited_until) > now;
 
-    if (!hasValidUnlimited && userCredits.credits_balance <= 0) {
+    if (!hasValidUnlimited && userCredits.credits_balance === 0) {
       setError('You need credits to analyze your idea.');
       setIsLoading(false);
       handleNeedCredits();
@@ -310,7 +311,11 @@ export default function ValidatePage() {
                   </span>
                 ) : (
                   <span>
-                    <span>Credits Remaining: <span className="font-medium">{userCredits.credits_balance}</span></span>
+                    {userCredits.credits_balance === 0 && !userCredits.free_analysis_used ? (
+                      <span className="text-blue-600">Free Analysis Available</span>
+                    ) : (
+                      <span>Credits Remaining: <span className="font-medium">{userCredits.credits_balance}</span></span>
+                    )}
                   </span>
                 )}
               </div>

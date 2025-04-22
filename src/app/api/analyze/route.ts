@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       credits.unlimited_until && 
       new Date(credits.unlimited_until) > now;
 
-    if (!hasValidUnlimited && credits.credits_balance <= 0) {
+    if (!hasValidUnlimited && credits.credits_balance === 0) {
       return NextResponse.json(
         { error: 'No credits available' },
         { status: 403 }
@@ -81,8 +81,8 @@ export async function POST(req: NextRequest) {
 
         console.log(`[analyze API] Successfully created analysis ID: ${analysisId}`);
 
-        // If not unlimited, deduct a credit
-        if (!hasValidUnlimited) {
+        // If not unlimited and using a credit, deduct it
+        if (!hasValidUnlimited && credits.credits_balance > 0) {
           const { error: updateError } = await supabase.rpc('add_credits', {
             p_user_id: user.id,
             p_credits: -1

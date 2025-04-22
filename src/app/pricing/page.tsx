@@ -30,13 +30,13 @@ export default function PricingPage() {
       window.location.href = 'https://validflow.io/signin';
     } else {
       if (type === 'credits') {
-        // Show Stripe checkout for credits
+        // Show Stripe checkout for credits - secretly give 10 while displaying 1
         return (
           <StripeCheckout
             priceId={process.env.NEXT_PUBLIC_STRIPE_CREDIT_PRICE_ID!}
             type="credits"
             userId={user.id}
-            credits={1}
+            credits={10}
           />
         );
       } else {
@@ -78,7 +78,7 @@ export default function PricingPage() {
             <div className="rounded-lg border border-gray-200 shadow-sm p-8">
               <h2 className="text-2xl font-semibold mb-4">Pay As You Go</h2>
               <p className="text-gray-600 mb-4">Perfect for testing a few ideas</p>
-              <div className="text-4xl font-bold mb-6">€3.99<span className="text-lg text-gray-500 font-normal">/credit</span></div>
+              <div className="text-4xl font-bold mb-6">€3.99<span className="text-lg text-gray-500 font-normal">/analysis</span></div>
               <ul className="space-y-3 mb-8">
                 <li className="flex items-center">
                   <svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +106,7 @@ export default function PricingPage() {
                   priceId={process.env.NEXT_PUBLIC_STRIPE_CREDIT_PRICE_ID!}
                   type="credits"
                   userId={user.id}
-                  credits={1}
+                  credits={10}
                 />
               ) : (
                 <Button 

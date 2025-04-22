@@ -30,7 +30,7 @@ async function testStripeSetup() {
       metadata: {
         userId: 'test-user',
         type: 'credits',
-        credits: '1',
+        credits: '10',
       },
     });
     console.log('Payment intent created:', paymentIntent.id);

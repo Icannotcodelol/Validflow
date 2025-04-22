@@ -294,7 +294,7 @@ export default function Home() {
                       <TypingAnimation
                         ideas={productIdeas}
                         className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none"
-                        staticText="ValidFlow"
+                        staticText="validate my"
                         typingSpeed={100}
                         deleteSpeed={50}
                         pauseDuration={2000}

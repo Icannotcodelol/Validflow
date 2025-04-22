@@ -28,7 +28,6 @@ export async function POST(req: NextRequest) {
       .insert({
         user_id: data.user!.id,
         credits_balance: 1,
-        free_analysis_used: true,
         has_unlimited: false
       })
 

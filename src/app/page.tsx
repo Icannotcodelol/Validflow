@@ -164,19 +164,22 @@ export default function Home() {
   const handleTryValidFlow = async () => {
     setIsLoading(true)
     try {
-      if (!session) {
+      // First check if we have a session
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      
+      if (!currentSession) {
         console.log('No session found, redirecting to signin')
         router.push('/signin')
         return
       }
 
-      console.log('Session found:', session)
+      console.log('Session found:', currentSession)
 
       // Check if user has credits or unlimited access
       const { data: credits, error: creditsError } = await supabase
         .from('user_credits')
         .select('credits_balance, has_unlimited, unlimited_until')
-        .eq('user_id', session.user.id)
+        .eq('user_id', currentSession.user.id)
         .single()
 
       console.log('Credits data:', credits)
@@ -187,10 +190,9 @@ export default function Home() {
         const { data: newCredits, error: insertError } = await supabase
           .from('user_credits')
           .insert({
-            user_id: session.user.id,
+            user_id: currentSession.user.id,
             credits_balance: 3,
-            has_unlimited: false,
-            free_analysis_used: false
+            has_unlimited: false
           })
           .select()
           .single()
@@ -204,7 +206,7 @@ export default function Home() {
           console.error('Error creating credits:', insertError)
           // If there's an error creating credits, still redirect to validate
           // The validate page will handle the error state
-          router.push('/')
+          router.push('/validate')
         }
       } else {
         const now = new Date()
@@ -219,8 +221,8 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error in handleTryValidFlow:', error)
-      // On error, redirect to home page instead of validate
-      router.push('/')
+      // On error, redirect to validate page instead of home
+      router.push('/validate')
     } finally {
       setIsLoading(false)
     }

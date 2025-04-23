@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSupabase } from "@/components/providers/SessionProvider";
 import { Button } from "@/components/ui/button";
@@ -124,6 +124,8 @@ export default function ValidatePage() {
   const [user, setUser] = useState<any>(null);
   const [userCredits, setUserCredits] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const checkInProgress = useRef(false);
+  const visibilityCheckTimeout = useRef<NodeJS.Timeout | null>(null);
   const [formData, setFormData] = useState({
     description: "",
     industry: "",
@@ -135,58 +137,87 @@ export default function ValidatePage() {
     additionalInfo: "",
   });
 
-  useEffect(() => {
-    const checkUser = async () => {
-      console.log('[ValidatePage useEffect] Starting session check')
-      setLoading(true)
-      setError(null)
+  const checkUser = useCallback(async () => {
+    // Prevent multiple simultaneous checks
+    if (checkInProgress.current) {
+      return;
+    }
+
+    checkInProgress.current = true;
+    console.log('[ValidatePage useEffect] Starting session check')
+    
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) {
+        console.error('[ValidatePage useEffect] Session error:', sessionError)
+        setError('Session error. Please try signing in again.')
+        router.push('/signin?error=session_error')
+        return
+      }
+
+      console.log('[ValidatePage useEffect] Session status:', !!session)
+      
+      if (!session) {
+        console.log('[ValidatePage useEffect] No session found, redirecting to signin')
+        router.push('/signin?redirectTo=/validate')
+        return
+      }
+
+      // Get user credits
+      const { data: credits, error: creditsError } = await supabase
+        .from('user_credits')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (creditsError) {
+        console.error('[ValidatePage useEffect] Credits error:', creditsError)
+        setError('Error loading user credits. Please try again.')
+        return
+      }
+
+      // Update all state at once to minimize re-renders
+      setUserCredits(credits)
+      setUser(session.user)
+      setError(null)
+    } catch (error) {
+      console.error('[ValidatePage useEffect] Unexpected error:', error)
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+      checkInProgress.current = false
+    }
+  }, [supabase, router])
+
+  useEffect(() => {
+    // Initial check
+    checkUser()
+
+    // Handle visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Clear any existing timeout
+        if (visibilityCheckTimeout.current) {
+          clearTimeout(visibilityCheckTimeout.current)
+        }
         
-        if (sessionError) {
-          console.error('[ValidatePage useEffect] Session error:', sessionError)
-          setError('Session error. Please try signing in again.')
-          setLoading(false)
-          router.push('/signin?error=session_error')
-          return
-        }
-
-        console.log('[ValidatePage useEffect] Session status:', !!session)
-        
-        if (!session) {
-          console.log('[ValidatePage useEffect] No session found, redirecting to signin')
-          setLoading(false)
-          router.push('/signin?redirectTo=/validate')
-          return
-        }
-
-        // Get user credits
-        const { data: credits, error: creditsError } = await supabase
-          .from('user_credits')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single()
-
-        if (creditsError) {
-          console.error('[ValidatePage useEffect] Credits error:', creditsError)
-          setError('Error loading user credits. Please try again.')
-          setLoading(false)
-          return
-        }
-
-        setUserCredits(credits)
-        setUser(session.user)
-      } catch (error) {
-        console.error('[ValidatePage useEffect] Unexpected error:', error)
-        setError('An unexpected error occurred. Please try again.')
-      } finally {
-        setLoading(false)
+        // Wait a bit before checking session to allow for any pending auth state changes
+        visibilityCheckTimeout.current = setTimeout(() => {
+          checkUser()
+        }, 1000)
       }
     }
 
-    checkUser()
-  }, [supabase, router])
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (visibilityCheckTimeout.current) {
+        clearTimeout(visibilityCheckTimeout.current)
+      }
+    }
+  }, [checkUser])
 
   if (loading) {
     return <LoadingScreen />;
@@ -239,6 +270,7 @@ export default function ValidatePage() {
       userCredits.unlimited_until && 
       new Date(userCredits.unlimited_until) > now;
 
+    // Check if user has credits or unlimited access
     if (!hasValidUnlimited && userCredits.credits_balance === 0) {
       setError('You need credits to analyze your idea.');
       setIsLoading(false);

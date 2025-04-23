@@ -14,6 +14,7 @@ import { AnalysisDisplay } from "@/components/AnalysisDisplay"
 import { AnalysisDocument, UserInputSchema, ExecutiveSummarySchema, MarketSizeGrowthSchema, TargetUsersSchema, CompetitionSchema, UnitEconomicsSchema, MarketingChannelsSchema, GoToMarketPlanSchema, CriticalThoughtQuestionsSchema, VCSentimentSchema, ReportSummarySchema } from "@/lib/ai/models"
 import { ExampleValidation } from "@/components/ExampleValidation"
 import { Footer } from "@/components/Footer"
+import { PromotionalBanner } from "@/components/PromotionalBanner"
 
 interface Detail {
   title: string
@@ -231,6 +232,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {!session && !isAuthChecking && <PromotionalBanner />}
       <header className="px-4 lg:px-6 h-14 flex items-center border-b">
         <Link className="flex items-center justify-center" href="/">
           <Lightbulb className="h-6 w-6 text-primary" />

@@ -3,7 +3,7 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Button } from '@/components/ui/button'
 
-export default function SignInForm({ redirectTo = '/' }: { redirectTo?: string }) {
+export default function SignInForm() {
   const supabase = createClientComponentClient()
 
   const handleSignIn = async () => {
@@ -12,7 +12,7 @@ export default function SignInForm({ redirectTo = '/' }: { redirectTo?: string }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${baseUrl}/auth/callback?redirectTo=${redirectTo}`
+          redirectTo: `${baseUrl}/auth/callback?redirectTo=/`
         }
       })
       

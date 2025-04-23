@@ -3,11 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import SignInForm from '@/components/SignInForm'
 
-export default async function SignIn({
-  searchParams,
-}: {
-  searchParams: { redirectTo?: string }
-}) {
+export default async function SignIn() {
   const supabase = createServerComponentClient({ cookies })
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -23,7 +19,7 @@ export default async function SignIn({
             Sign in to your account
           </h2>
         </div>
-        <SignInForm redirectTo={searchParams.redirectTo} />
+        <SignInForm />
       </div>
     </div>
   )

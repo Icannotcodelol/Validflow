@@ -166,7 +166,7 @@ export default function Home() {
     try {
       if (!session) {
         console.log('No session found, redirecting to signin')
-        router.push('/signin?redirectTo=/validate')
+        router.push('/signin')
         return
       }
 
@@ -189,7 +189,8 @@ export default function Home() {
           .insert({
             user_id: session.user.id,
             credits_balance: 3,
-            has_unlimited: false
+            has_unlimited: false,
+            free_analysis_used: false
           })
           .select()
           .single()
@@ -201,7 +202,9 @@ export default function Home() {
           router.push('/validate')
         } else {
           console.error('Error creating credits:', insertError)
-          router.push('/validate')
+          // If there's an error creating credits, still redirect to validate
+          // The validate page will handle the error state
+          router.push('/')
         }
       } else {
         const now = new Date()
@@ -216,7 +219,8 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error in handleTryValidFlow:', error)
-      router.push('/validate')
+      // On error, redirect to home page instead of validate
+      router.push('/')
     } finally {
       setIsLoading(false)
     }

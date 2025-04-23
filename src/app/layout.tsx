@@ -50,6 +50,12 @@ export default function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script
+          defer
+          data-website-id="68091cfa9b8fae4048125120"
+          data-domain="validflow.io"
+          src="https://datafa.st/js/script.js"
+        />
       </head>
       <body className={inter.className}>
         <Providers>

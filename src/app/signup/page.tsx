@@ -13,7 +13,7 @@ export default function SignUpPage() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.push('/validate');
+        router.push('/');
       }
     };
     checkSession();
@@ -23,7 +23,7 @@ export default function SignUpPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NODE_ENV === 'production' ? 'https://validflow.io' : window.location.origin}/auth/callback`
+        redirectTo: `${process.env.NODE_ENV === 'production' ? 'https://validflow.io' : window.location.origin}/auth/callback?redirectTo=/`
       }
     });
 

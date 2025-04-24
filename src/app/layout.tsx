@@ -55,6 +55,21 @@ export default function RootLayout({
           data-website-id="68091cfa9b8fae4048125120"
           data-domain="validflow.io"
           src="https://datafa.st/js/script.js"
+          onLoad={() => console.log('Datafast script loaded successfully')}
+          onError={(e) => console.error('Datafast script failed to load:', e)}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('load', function() {
+                console.log('Datafast script status:', {
+                  loaded: !!window.umami,
+                  websiteId: '68091cfa9b8fae4048125120',
+                  domain: 'validflow.io'
+                });
+              });
+            `,
+          }}
         />
       </head>
       <body className={inter.className}>

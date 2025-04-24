@@ -29,10 +29,30 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: `
               default-src 'self';
-              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://*.stripe.network https://vercel.live https://va.vercel-scripts.com https://*.supabase.co;
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+                https://*.stripe.com 
+                https://*.stripe.network 
+                https://vercel.live 
+                https://va.vercel-scripts.com 
+                https://*.supabase.co
+                https://www.googletagmanager.com
+                https://www.google-analytics.com
+                https://static.cloudflareinsights.com
+                https://datafa.st
+                https://datafast.io;
               style-src 'self' 'unsafe-inline';
-              img-src 'self' data: blob: https://*.stripe.com https://validflow.io https://*.supabase.co https://lh3.googleusercontent.com;
-              frame-src 'self' https://*.stripe.com https://*.stripe.network https://hooks.stripe.com https://vercel.live https://*.supabase.co;
+              img-src 'self' data: blob: 
+                https://*.stripe.com 
+                https://validflow.io 
+                https://*.supabase.co 
+                https://lh3.googleusercontent.com
+                https://www.google-analytics.com;
+              frame-src 'self' 
+                https://*.stripe.com 
+                https://*.stripe.network 
+                https://hooks.stripe.com 
+                https://vercel.live 
+                https://*.supabase.co;
               connect-src 'self' 
                 https://*.stripe.com 
                 https://*.stripe.network 
@@ -42,7 +62,14 @@ const nextConfig = {
                 wss://*.supabase.co 
                 https://validflow.io 
                 https://*.vercel.com 
-                https://*.vercel-insights.com;
+                https://*.vercel-insights.com
+                https://www.google-analytics.com
+                https://analytics.google.com
+                https://*.google-analytics.com
+                https://*.analytics.google.com
+                https://*.cloudflareinsights.com
+                https://datafa.st
+                https://datafast.io;
               font-src 'self' data:;
               object-src 'none';
               base-uri 'self';

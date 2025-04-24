@@ -318,7 +318,7 @@ export default function Home() {
                     onClick={handleTryValidFlow}
                     disabled={isLoading || isAuthChecking}
                   >
-                    {isLoading ? "Loading..." : "Try ValidFlow"} {!isLoading && <ArrowRight className="h-4 w-4" />}
+                    {isLoading ? "Loading..." : "Analyse Now"} {!isLoading && <ArrowRight className="h-4 w-4" />}
                   </Button>
                   <Link href="/pricing">
                     <Button size="lg" variant="outline" className="bg-black hover:bg-black/90 text-white border-white/20">

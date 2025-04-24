@@ -12,8 +12,8 @@ export default function Document() {
         <NextScript />
         <script
           defer={true}
-          src="https://static.cloudflareinsights.com/beacon.min.js"
-          data-cf-beacon='{"token": "1e06ab5e7e58404aaedda90e02d05deb"}'
+          src="/cf/beacon.min.js"
+          data-cf-beacon='{"token": "1e06ab5e7e58404aaedda90e02d05deb", "spa": false, "beacon": "/cf/beacon"}'
         ></script>
       </body>
     </Html>

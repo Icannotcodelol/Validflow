@@ -3,10 +3,11 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Analytics } from "@vercel/analytics/react"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import { GoogleAnalytics } from '@next/third-parties/google'
 import { Providers } from "@/components/providers/Providers"
 import { Toaster } from "@/components/ui/toaster"
 import { CookieConsent } from "@/components/CookieConsent"
+import Script from 'next/script'
+import { GA_TRACKING_ID } from '@/lib/analytics'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -43,13 +44,34 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const gaId = process.env.NEXT_PUBLIC_GA_ID
-
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {GA_TRACKING_ID && (
+          <>
+            <Script
+              id="ga-init"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${GA_TRACKING_ID}', {
+                    transport_url: '/g/collect',
+                    page_path: window.location.pathname,
+                  });
+                `,
+              }}
+            />
+            <Script
+              src={`/gtag/js?id=${GA_TRACKING_ID}`}
+              strategy="afterInteractive"
+            />
+          </>
+        )}
         <script
           defer
           data-website-id="68091cfa9b8fae4048125120"
@@ -65,7 +87,6 @@ export default function RootLayout({
         </Providers>
         <Analytics />
         <SpeedInsights />
-        {gaId && <GoogleAnalytics gaId={gaId} />}
         <Toaster />
         <CookieConsent />
       </body>

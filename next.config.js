@@ -23,6 +23,26 @@ const nextConfig = {
         source: '/api/events',
         destination: 'https://datafa.st/api/events',
       },
+      {
+        source: '/gtag/js',
+        destination: 'https://www.googletagmanager.com/gtag/js',
+      },
+      {
+        source: '/analytics',
+        destination: 'https://www.google-analytics.com/analytics.js',
+      },
+      {
+        source: '/g/collect',
+        destination: 'https://www.google-analytics.com/g/collect',
+      },
+      {
+        source: '/cf/beacon.min.js',
+        destination: 'https://static.cloudflareinsights.com/beacon.min.js',
+      },
+      {
+        source: '/cf/beacon',
+        destination: 'https://cloudflareinsights.com/cdn-cgi/beacon',
+      },
     ]
   },
   webpack: (config) => {

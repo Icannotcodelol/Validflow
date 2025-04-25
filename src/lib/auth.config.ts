@@ -11,7 +11,7 @@ interface Session {
 const supabase = createClient()
 
 export const authConfig = {
-  providers: ['google'],
+  providers: ['google', 'email'],
   callbacks: {
     async signIn({ user }: { user: User | null }) {
       if (!user) return false
@@ -25,6 +25,6 @@ export const authConfig = {
     }
   },
   pages: {
-    signIn: '/signin'
+    signIn: '/auth/signin'
   }
 } 

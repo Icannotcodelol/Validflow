@@ -1,153 +1,127 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Icons } from "@/components/ui/icons";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useState } from 'react'
+import Link from 'next/link'
 
-export default function SignUp() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+export default function SignUpPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+  const supabase = createClientComponentClient()
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsLoading(true);
-    setError(null);
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard')
+      }
+    }
+    checkSession()
+  }, [router, supabase])
 
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
-    const name = formData.get("name") as string;
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setIsLoading(false);
-      return;
+      setError('Passwords do not match')
+      return
     }
 
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          name,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Something went wrong");
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`
       }
+    })
 
-      // Redirect to sign in page
-      router.push("/auth/signin");
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Something went wrong");
-    } finally {
-      setIsLoading(false);
+    if (error) {
+      setError(error.message)
+      return
     }
+
+    // Show success message and redirect to sign in
+    router.push('/auth/signin?message=Check your email to confirm your account')
   }
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <Card className="w-[400px]">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl">Create an account</CardTitle>
-          <CardDescription>
-            Enter your information to create an account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit}>
-            <div className="grid gap-4">
-              <div className="grid gap-1">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  placeholder="John Doe"
-                  type="text"
-                  autoCapitalize="none"
-                  autoComplete="name"
-                  autoCorrect="off"
-                  disabled={isLoading}
-                  name="name"
-                  required
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  placeholder="name@example.com"
-                  type="email"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  autoCorrect="off"
-                  disabled={isLoading}
-                  name="email"
-                  required
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  disabled={isLoading}
-                  name="password"
-                  required
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  disabled={isLoading}
-                  name="confirmPassword"
-                  required
-                />
-              </div>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <Button disabled={isLoading}>
-                {isLoading && (
-                  <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Sign Up
-              </Button>
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight">
+            Create your account
+          </h2>
+        </div>
+        <form className="mt-8 space-y-6" onSubmit={handleSignUp}>
+          <div className="space-y-4 rounded-md shadow-sm">
+            <div>
+              <Label htmlFor="email">Email address</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
-          </form>
-        </CardContent>
-        <CardFooter>
-          <div className="text-sm text-muted-foreground">
-            Already have an account?{" "}
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="text-red-500 text-sm text-center">{error}</div>
+          )}
+
+          <div>
             <Button
-              variant="link"
-              className="p-0"
-              onClick={() => router.push("/auth/signin")}
+              type="submit"
+              className="w-full"
             >
-              Sign in
+              Create Account
             </Button>
           </div>
-        </CardFooter>
-      </Card>
+        </form>
+
+        <div className="text-center text-sm">
+          <span className="text-gray-500">Already have an account? </span>
+          <Link href="/auth/signin" className="font-medium text-primary hover:text-primary/90">
+            Sign in
+          </Link>
+        </div>
+      </div>
     </div>
-  );
+  )
 } 

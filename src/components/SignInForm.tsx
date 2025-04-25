@@ -2,11 +2,50 @@
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function SignInForm() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
   const supabase = createClientComponentClient()
 
-  const handleSignIn = async () => {
+  const handleEmailSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setIsLoading(true)
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password')
+        } else {
+          setError(error.message)
+        }
+        return
+      }
+
+      router.push('/dashboard')
+      router.refresh()
+    } catch (error) {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true)
     try {
       const baseUrl = process.env.NODE_ENV === 'production' ? 'https://validflow.io' : window.location.origin
       const { error } = await supabase.auth.signInWithOAuth({
@@ -16,18 +55,109 @@ export default function SignInForm() {
         }
       })
       
-      if (error) throw error
+      if (error) {
+        setError(error.message)
+      }
     } catch (error) {
-      console.error('Sign in error:', error)
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NODE_ENV === 'production' ? 'https://validflow.io' : window.location.origin}/auth/reset-password`
+      })
+
+      if (error) {
+        setError(error.message)
+      } else {
+        setError('Password reset instructions have been sent to your email')
+      }
+    } catch (error) {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="mt-8 space-y-4">
+    <div className="w-full space-y-6">
+      <form onSubmit={handleEmailSignIn} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email address</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
+
+        {error && (
+          <div className="text-sm text-red-500">{error}</div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <Button
+            type="button"
+            variant="link"
+            className="text-sm"
+            onClick={handleResetPassword}
+            disabled={isLoading}
+          >
+            Forgot your password?
+          </Button>
+        </div>
+
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Signing in...' : 'Sign in with Email'}
+        </Button>
+      </form>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            Or continue with
+          </span>
+        </div>
+      </div>
+
       <Button
-        onClick={handleSignIn}
-        className="w-full flex items-center justify-center gap-2"
         variant="outline"
+        onClick={handleGoogleSignIn}
+        className="w-full flex items-center justify-center gap-2"
+        disabled={isLoading}
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path

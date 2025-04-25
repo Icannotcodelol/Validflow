@@ -3,6 +3,15 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import type { Database } from '@/types/supabase'
 
+export const config = {
+  matcher: [
+    /*
+     * Match all paths except Next.js internals and static files
+     */
+    '/((?!_next|static|favicon.ico|manifest.json|robots.txt).*)'
+  ]
+}
+
 // List of public routes that don't require authentication
 const publicRoutes = [
   '/', 
@@ -36,13 +45,7 @@ export async function middleware(req: NextRequest) {
     const path = req.nextUrl.pathname
     
     // Skip auth check for static resources and API routes
-    if (path.startsWith('/_next') || 
-        path.startsWith('/api') || 
-        path.startsWith('/static') || 
-        path.startsWith('/images') ||
-        path === '/favicon.ico' ||
-        path === '/manifest.json' ||
-        path === '/robots.txt' ||
+    if (skipAuthPaths.some(skipPath => path.startsWith(skipPath)) || 
         path.match(/\.(ico|png|jpg|jpeg|gif|svg|js|css|woff|woff2|ttf|eot)$/)) {
       return NextResponse.next()
     }
@@ -122,13 +125,4 @@ export async function middleware(req: NextRequest) {
     console.error('[Middleware] ❌ Unexpected error:', error)
     return NextResponse.next()
   }
-}
-
-export const config = {
-  matcher: [
-    /*
-     * Match all paths except Next.js internals and static files
-     */
-    '/((?!_next|static|favicon.ico|manifest.json|robots.txt).*)'
-  ]
 } 

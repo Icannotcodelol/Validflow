@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { Database } from '@/types/supabase'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     console.log('[Auth Callback] Starting callback processing')
@@ -42,11 +44,10 @@ export async function GET(request: Request) {
     // URL to redirect to after sign in process completes
     const baseUrl = process.env.NODE_ENV === 'production' ? 'https://validflow.io' : requestUrl.origin
     const redirectUrl = new URL(redirectTo, baseUrl)
-    console.log('[Auth Callback] Final redirect URL:', redirectUrl.toString())
+    
     return NextResponse.redirect(redirectUrl)
   } catch (error) {
-    console.error('[Auth Callback] Error in callback:', error)
-    const baseUrl = process.env.NODE_ENV === 'production' ? 'https://validflow.io' : request.url
-    return NextResponse.redirect(new URL(`/auth/error?error=${encodeURIComponent(error instanceof Error ? error.message : 'An unexpected error occurred')}`, baseUrl))
+    console.error('[Auth Callback] Unexpected error:', error)
+    return NextResponse.redirect(new URL('/auth/error?error=unexpected', request.url))
   }
 } 

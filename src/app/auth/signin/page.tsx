@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useState } from 'react'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
-export default function SignInPage() {
+function SignInContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -17,7 +18,6 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClientComponentClient()
 
   useEffect(() => {
     const message = searchParams?.get('message')
@@ -28,13 +28,14 @@ export default function SignInPage() {
 
   useEffect(() => {
     const checkSession = async () => {
+      const supabase = createClientComponentClient()
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         router.push('/dashboard')
       }
     }
     checkSession()
-  }, [router, supabase])
+  }, [router])
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,6 +43,7 @@ export default function SignInPage() {
     setIsLoading(true)
     
     try {
+      const supabase = createClientComponentClient()
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -68,6 +70,7 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     try {
+      const supabase = createClientComponentClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -93,6 +96,7 @@ export default function SignInPage() {
 
     setIsLoading(true)
     try {
+      const supabase = createClientComponentClient()
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${process.env.NODE_ENV === 'production' ? 'https://validflow.io' : window.location.origin}/auth/reset-password`
       })
@@ -207,5 +211,13 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInContent />
+    </Suspense>
   )
 } 

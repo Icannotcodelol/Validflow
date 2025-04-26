@@ -3,137 +3,20 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ArrowRight, BarChart3, CheckCircle, ChevronRight, Lightbulb, Target } from "lucide-react"
+import { Lightbulb } from "lucide-react"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { TypingAnimation } from "@/components/typing-animation"
-import { productIdeas } from "@/lib/product-ideas"
-import { AnalysisDisplay } from "@/components/AnalysisDisplay"
-import { AnalysisDocument, UserInputSchema, ExecutiveSummarySchema, MarketSizeGrowthSchema, TargetUsersSchema, CompetitionSchema, UnitEconomicsSchema, MarketingChannelsSchema, GoToMarketPlanSchema, CriticalThoughtQuestionsSchema, VCSentimentSchema, ReportSummarySchema } from "@/lib/ai/models"
-import { ExampleValidation } from "@/components/ExampleValidation"
+import { Hero } from "@/components/sections/Hero"
+import { MiniDemo } from "@/components/sections/MiniDemo"
+import { Testimonials } from "@/components/sections/Testimonials"
+import { HowItWorks } from "@/components/sections/HowItWorks"
 import { Footer } from "@/components/Footer"
 import { PromotionalBanner } from "@/components/PromotionalBanner"
-
-interface Detail {
-  title: string
-  content: string
-}
-
-interface Dimension {
-  name: string
-  score: number
-  description: string
-  details: Detail[]
-}
-
-// Placeholder function to safely create schemas with defaults for missing fields
-// Adjust default values as needed
-const safeCreate = (schema: any, data: any) => {
-  try {
-    // Attempt to parse, providing defaults indirectly if needed
-    // This is a simplified approach; a more robust implementation might merge defaults
-    const fullData = {
-      sectionId: data.sectionId || 'default-id',
-      createdAt: data.createdAt || new Date(),
-      updatedAt: data.updatedAt || new Date(),
-      status: data.status || 'completed',
-      error: data.error || undefined,
-      ...data // Spread provided data
-    };
-    // For nested schemas like MarketSizeGrowth, ensure sub-objects exist
-    if (schema === MarketSizeGrowthSchema) {
-      fullData.totalAddressableMarket = fullData.totalAddressableMarket || {};
-      fullData.serviceableAddressableMarket = fullData.serviceableAddressableMarket || {};
-      fullData.serviceableObtainableMarket = fullData.serviceableObtainableMarket || {};
-      fullData.growthRate = fullData.growthRate || {};
-      fullData.marketTrends = fullData.marketTrends || [];
-      fullData.marketDrivers = fullData.marketDrivers || [];
-      fullData.marketChallenges = fullData.marketChallenges || [];
-    }
-     if (schema === TargetUsersSchema) {
-      fullData.primaryUserPersonas = fullData.primaryUserPersonas || [];
-      fullData.userSegments = fullData.userSegments || [];
-    }
-    if (schema === CompetitionSchema) {
-      fullData.directCompetitors = fullData.directCompetitors || [];
-      fullData.indirectCompetitors = fullData.indirectCompetitors || [];
-      fullData.competitiveAdvantages = fullData.competitiveAdvantages || [];
-      fullData.marketGaps = fullData.marketGaps || [];
-    }
-     if (schema === UnitEconomicsSchema) {
-      fullData.pricing = fullData.pricing || { tiers: [] };
-      fullData.costs = fullData.costs || { fixed: [], variable: [] };
-      fullData.metrics = fullData.metrics || {};
-      fullData.projections = fullData.projections || [];
-    }
-    if (schema === MarketingChannelsSchema) {
-      fullData.channels = fullData.channels || [];
-      fullData.budget = fullData.budget || { breakdown: [] };
-      fullData.recommendations = fullData.recommendations || [];
-    }
-    if (schema === GoToMarketPlanSchema) {
-      fullData.launchStrategy = fullData.launchStrategy || { phases: [] };
-      fullData.keyPartnerships = fullData.keyPartnerships || [];
-      fullData.resourceRequirements = fullData.resourceRequirements || { team: [], technology: [] };
-    }
-    if (schema === VCSentimentSchema) {
-      fullData.overview = fullData.overview || {};
-      fullData.investmentAttractiveness = fullData.investmentAttractiveness || { strengths: [], weaknesses: [], opportunities: [], threats: [] };
-      fullData.marketActivity = fullData.marketActivity || { notableTransactions: [], comparableExits: [] };
-      fullData.marketTrends = fullData.marketTrends || { trends: [], investorSentiment: { keyFactors: [], concerns: [] } };
-      fullData.fundingStrategy = fullData.fundingStrategy || { recommendedRound: { valuation: { basis: [] } }, useOfFunds: [], targetInvestors: [], milestones: [] };
-    }
-    if (schema === CriticalThoughtQuestionsSchema) {
-      fullData.questions = fullData.questions || [];
-    }
-     if (schema === ReportSummarySchema) {
-      fullData.keyRecommendations = fullData.keyRecommendations || [];
-      fullData.nextSteps = fullData.nextSteps || [];
-    }
-
-    // Use parse to validate and potentially strip extra fields if not using .passthrough()
-    // return schema.parse(fullData);
-    // Use safeParse for resilience, returning undefined on failure
-    const result = schema.safeParse(fullData);
-    if (result.success) {
-      return result.data;
-    } else {
-      console.error("Schema validation failed for", data.sectionId, result.error.issues);
-      // Return a default structure or minimal valid object
-      return {
-        sectionId: data.sectionId || 'failed-validation-id',
-        createdAt: data.createdAt || new Date(),
-        updatedAt: data.updatedAt || new Date(),
-        status: 'failed',
-        error: 'Schema validation failed: ' + result.error.message,
-      };
-    }
-  } catch (error) {
-    console.error("Error creating schema object:", error);
-    // Return a fallback structure on error
-     return {
-        sectionId: data.sectionId || 'error-id',
-        createdAt: data.createdAt || new Date(),
-        updatedAt: data.updatedAt || new Date(),
-        status: 'failed',
-        error: 'Failed to create schema object.',
-      };
-  }
-};
-
-/*
-// Commenting out the sampleAnalysis data block
-const sampleAnalysis: AnalysisDocument = {
-  // ... entire sample analysis object ...
-};
-*/
 
 export default function Home() {
   const router = useRouter()
   const supabase = createClientComponentClient()
-  const [selectedDimension, setSelectedDimension] = useState<Dimension | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [session, setSession] = useState<any>(null)
   const [isAuthChecking, setIsAuthChecking] = useState(true)
@@ -164,7 +47,6 @@ export default function Home() {
   const handleTryValidFlow = async () => {
     setIsLoading(true)
     try {
-      // First check if we have a session
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       
       if (!currentSession) {
@@ -175,7 +57,6 @@ export default function Home() {
 
       console.log('Session found:', currentSession)
 
-      // Check if user has credits or unlimited access
       const { data: credits, error: creditsError } = await supabase
         .from('user_credits')
         .select('credits_balance, has_unlimited, unlimited_until')
@@ -186,7 +67,6 @@ export default function Home() {
       console.log('Credits error:', creditsError)
 
       if (creditsError || !credits) {
-        // No credits record, create one with 3 credits
         const { data: newCredits, error: insertError } = await supabase
           .from('user_credits')
           .insert({
@@ -204,8 +84,6 @@ export default function Home() {
           router.push('/validate')
         } else {
           console.error('Error creating credits:', insertError)
-          // If there's an error creating credits, still redirect to validate
-          // The validate page will handle the error state
           router.push('/validate')
         }
       } else {
@@ -221,19 +99,10 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error in handleTryValidFlow:', error)
-      // On error, redirect to validate page instead of home
       router.push('/validate')
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleDimensionClick = (dimension: Dimension) => {
-    setSelectedDimension(dimension)
-  }
-
-  const handleBackClick = () => {
-    setSelectedDimension(null)
   }
 
   return (
@@ -248,161 +117,50 @@ export default function Home() {
           {!isAuthChecking && (
             session ? (
               <>
-                <Link href="/dashboard">
-                  <Button variant="ghost" size="sm">
-                    Dashboard
-                  </Button>
-                </Link>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={async () => {
-                    await supabase.auth.signOut()
-                    router.push('/')
-                  }}
-                >
-                  Sign Out
+                <Button variant="ghost" asChild>
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link href="/settings">Settings</Link>
                 </Button>
               </>
             ) : (
               <>
-                <Link href="/signin">
-                  <Button variant="ghost" size="sm">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/signup">
-                  <Button size="sm">Sign Up</Button>
-                </Link>
+                <Button variant="ghost" asChild>
+                  <Link href="/signin">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/signup">Sign Up</Link>
+                </Button>
               </>
             )
           )}
         </div>
       </header>
+
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-8">
-          {/* Hero Section with background image */}
-          <section 
-            className="w-full min-h-[80vh] relative flex items-center py-12 md:py-24 lg:py-32 xl:py-48 bg-cover bg-center bg-no-repeat overflow-hidden" 
-            style={{ 
-              backgroundImage: "url('/images/hero-bg.jpg')",
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat'
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black/80"></div>
-            <div className="container relative pl-8 md:pl-12 pr-4 md:pr-6 z-10">
-              <div className="max-w-3xl">
-                <div className="relative">
-                  <div className="space-y-8">
-                    <div className="h-[180px] sm:h-[200px] flex items-center">
-                      <TypingAnimation
-                        ideas={productIdeas}
-                        className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none"
-                        staticText="validate my"
-                        typingSpeed={100}
-                        deleteSpeed={50}
-                        pauseDuration={2000}
-                      />
-                    </div>
-                    <p className="max-w-[600px] text-white/90 md:text-xl text-left">
-                      Take the guesswork out of your startup idea. Get instant market validation and competitor insights that usually take months to gather. Start your journey with confidence, not speculation.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row mt-8">
-                  <Button 
-                    size="lg" 
-                    className="gap-1 bg-black hover:bg-black/90"
-                    onClick={handleTryValidFlow}
-                    disabled={isLoading || isAuthChecking}
-                  >
-                    {isLoading ? "Loading..." : "Analyse Now"} {!isLoading && <ArrowRight className="h-4 w-4" />}
-                  </Button>
-                  <Link href="/pricing">
-                    <Button size="lg" variant="outline" className="bg-black hover:bg-black/90 text-white border-white/20">
-                      View Pricing
-                    </Button>
-                  </Link>
-                </div>
-              </div>
+        <Hero onTryValidFlow={handleTryValidFlow} isLoading={isLoading} />
+        <section className="py-24 md:py-32">
+          <HowItWorks />
+        </section>
+        <section className="py-24 md:py-32 bg-muted/50">
+          <Testimonials />
+        </section>
+        <section className="py-24 md:py-32">
+          <div className="container px-4 md:px-6">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl font-bold mb-4">Try Our Mini Demo</h2>
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                Get a quick taste of how our AI-powered validation works. Enter your idea and see instant insights.
+              </p>
             </div>
-          </section>
-
-          {/* Example Validation Section */}
-          <ExampleValidation />
-
-          {/* How It Works Section with solid background */}
-          <section className="w-full py-12 md:py-24 lg:py-32 bg-muted">
-            <div className="container px-4 md:px-6">
-              <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">How It Works</h2>
-                  <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                    Turn your business idea into a validated strategy with comprehensive market insights, competitive analysis, and actionable recommendations.
-                  </p>
-                </div>
-              </div>
-              <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
-                <div className="flex flex-col justify-center space-y-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <Lightbulb className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold">1. Share Your Vision</h3>
-                    <p className="text-muted-foreground">
-                      Tell us about your product concept, target market, and business model. Our structured approach ensures we capture all critical aspects of your idea.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col justify-center space-y-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <Target className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold">2. Deep Market Analysis</h3>
-                    <p className="text-muted-foreground">
-                      Get comprehensive insights into market trends, competitor landscape, and potential opportunities across 8 critical business dimensions.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col justify-center space-y-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                    <CheckCircle className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold">3. Strategic Roadmap</h3>
-                    <p className="text-muted-foreground">
-                      Receive a detailed validation report with market-tested strategies, revenue projections, and a clear path to launch and growth.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="max-w-2xl mx-auto">
+              <MiniDemo />
             </div>
-          </section>
-
-          <section className="w-full py-12 md:py-24 lg:py-32">
-            <div className="container px-4 md:px-6">
-              <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                    Ready to Validate Your Idea?
-                  </h2>
-                  <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                    Get started now and receive your comprehensive validation report
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Link href="/validate">
-                    <Button size="lg">Get Started</Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </main>
+
       <Footer />
     </div>
   )

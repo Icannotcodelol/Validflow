@@ -25,19 +25,26 @@ AS $$
 DECLARE
     v_has_unlimited boolean;
     v_unlimited_until timestamptz;
+    v_current_credits integer;
 BEGIN
-    -- Get the user's subscription status
-    SELECT has_unlimited, unlimited_until
-    INTO v_has_unlimited, v_unlimited_until
+    -- Get the user's subscription status and current credits
+    SELECT has_unlimited, unlimited_until, credits_balance
+    INTO v_has_unlimited, v_unlimited_until, v_current_credits
     FROM public.user_credits
     WHERE user_id = NEW.user_id;
 
     -- Only deduct if user doesn't have an active unlimited subscription
     IF NOT (v_has_unlimited = true AND v_unlimited_until IS NOT NULL AND v_unlimited_until > now()) THEN
+        -- Check if user has enough credits
+        IF v_current_credits <= 0 THEN
+            -- Raise an exception if user has no credits
+            RAISE EXCEPTION 'Insufficient credits';
+        END IF;
+
+        -- Deduct one credit
         UPDATE public.user_credits
-        SET credits_balance = credits_balance - 1 -- Use credits_balance here
-        WHERE user_id = NEW.user_id
-        AND credits_balance > 0; -- Use credits_balance here
+        SET credits_balance = credits_balance - 1
+        WHERE user_id = NEW.user_id;
     END IF;
 
     RETURN NEW;
